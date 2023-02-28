@@ -1,0 +1,16 @@
+[package]
+name = "bevy-rust-gpu"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = ["shader-meta", "entry-point-export"]
+shader-meta = []
+entry-point-export = []
+
+[dependencies]
+bevy = "0.9.1"
+serde = "1.0.152"
+serde_json = "1.0.93"
+bevy_common_assets = { version = "0.4.0", features = ["json"] }
+once_cell = "1.17.1"
