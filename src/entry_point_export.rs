@@ -33,6 +33,7 @@ pub type EntryPointReceiver = Receiver<Export>;
 
 #[derive(Debug, Default, Clone, Deref, DerefMut, Serialize, Deserialize)]
 pub struct EntryPoints {
+    #[serde(flatten)]
     pub entry_points: HashMap<String, Vec<Vec<String>>>,
 }
 
