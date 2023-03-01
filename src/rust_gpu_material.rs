@@ -4,10 +4,13 @@ use std::marker::PhantomData;
 
 use bevy::{
     pbr::StandardMaterialUniform,
-    prelude::{default, info, warn, Handle, Image, Material, Shader, StandardMaterial},
+    prelude::{
+        default, info, warn, AssetEvent, Assets, CoreStage, EventReader, Handle, Image, Material,
+        MaterialPlugin, Plugin, ResMut, Shader, StandardMaterial,
+    },
     reflect::TypeUuid,
     render::render_resource::{AsBindGroup, AsBindGroupShaderType, Face, ShaderType},
-    utils::Uuid,
+    utils::{HashSet, Uuid},
 };
 
 use crate::prelude::EntryPoint;
@@ -25,6 +28,40 @@ const SHADER_DEFS: &[&'static str] = &[
     #[cfg(feature = "webgl")]
     "SIXTEEN_BYTE_ALIGNMENT",
 ];
+
+pub struct RustGpuMaterialPlugin<V, F>
+where
+    V: EntryPoint,
+    F: EntryPoint,
+{
+    _phantom: PhantomData<(V, F)>,
+}
+
+impl<V, F> Default for RustGpuMaterialPlugin<V, F>
+where
+    V: EntryPoint,
+    F: EntryPoint,
+{
+    fn default() -> Self {
+        RustGpuMaterialPlugin {
+            _phantom: default(),
+        }
+    }
+}
+
+impl<V, F> Plugin for RustGpuMaterialPlugin<V, F>
+where
+    V: EntryPoint,
+    F: EntryPoint,
+{
+    fn build(&self, app: &mut bevy::prelude::App) {
+        app.add_system_to_stage(CoreStage::Last, shader_events::<V, F>);
+        app.add_plugin(MaterialPlugin::<RustGpuMaterial<V, F>>::default());
+
+        #[cfg(feature = "shader-meta")]
+        app.add_plugin(crate::prelude::ShaderMetaPlugin::<V, F>::default());
+    }
+}
 
 /// Newtype for composing `StandardMaterialUniform`
 #[derive(ShaderType)]
@@ -324,5 +361,54 @@ where
         }
 
         Ok(())
+    }
+}
+
+pub fn shader_events<V, F>(
+    mut shader_events: EventReader<AssetEvent<Shader>>,
+    mut materials: ResMut<Assets<RustGpuMaterial<V, F>>>,
+) where
+    V: EntryPoint,
+    F: EntryPoint,
+{
+    let mut changed_shaders = HashSet::default();
+
+    for event in shader_events.iter() {
+        match event {
+            AssetEvent::Created {
+                handle: shader_handle,
+            }
+            | AssetEvent::Modified {
+                handle: shader_handle,
+            } => {
+                // Remove meta in case the shader and meta load on different frames
+                SHADER_META.write().unwrap().remove(shader_handle);
+
+                // Mark this shader for material reloading
+                changed_shaders.insert(shader_handle);
+            }
+            _ => (),
+        }
+    }
+
+    // Reload all materials with shaders that have changed
+    for (_, material) in materials.iter_mut() {
+        let mut reload = false;
+
+        if let Some(vertex_shader) = &material.vertex_shader {
+            if changed_shaders.contains(vertex_shader) {
+                reload = true;
+            }
+        }
+
+        if let Some(fragment_shader) = &material.fragment_shader {
+            if changed_shaders.contains(fragment_shader) {
+                reload = true;
+            }
+        }
+
+        if reload {
+            material.iteration += 1;
+        }
     }
 }

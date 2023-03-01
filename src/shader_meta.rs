@@ -1,6 +1,6 @@
 //! Adds support for loading `.spv.json` metadata
 
-pub (crate) static SHADER_META: Lazy<RwLock<ShaderMeta>> = Lazy::new(Default::default);
+pub(crate) static SHADER_META: Lazy<RwLock<ShaderMeta>> = Lazy::new(Default::default);
 
 use std::{marker::PhantomData, sync::RwLock};
 
@@ -9,7 +9,7 @@ use once_cell::sync::Lazy;
 use bevy::{
     prelude::{
         default, info, AssetEvent, Assets, Deref, DerefMut, EventReader, Handle, Plugin, Res,
-        ResMut, Resource, Shader,
+        ResMut, Resource, Shader, IntoSystemDescriptor,
     },
     reflect::TypeUuid,
     utils::{HashMap, HashSet},
@@ -18,7 +18,7 @@ use bevy_common_assets::json::JsonAssetPlugin;
 
 use serde::{Deserialize, Serialize};
 
-use crate::prelude::{EntryPoint, RustGpuMaterial};
+use crate::prelude::{EntryPoint, RustGpuMaterial, shader_events};
 
 /// Handles the loading of `.spv.json` shader metadata,
 /// and using it to conditionally re-specialize `RustGpuMaterial` instances on reload.
@@ -48,7 +48,10 @@ where
             app.init_resource::<ShaderMetaMap>();
         }
 
-        app.add_system_to_stage(bevy::prelude::CoreStage::Last, module_meta_events::<V, F>);
+        app.add_system_to_stage(
+            bevy::prelude::CoreStage::Last,
+            module_meta_events::<V, F>.after(shader_events::<V, F>),
+        );
     }
 }
 
@@ -85,7 +88,7 @@ impl ShaderMetaMap {
 }
 
 #[derive(Debug, Default, Clone, Deref, DerefMut)]
-pub (crate) struct ShaderMeta {
+pub(crate) struct ShaderMeta {
     pub metas: HashMap<Handle<Shader>, ModuleMeta>,
 }
 
@@ -101,7 +104,6 @@ pub struct ModuleMeta {
 
 /// Listens for asset events, updates backend data, and triggers material re-specialization
 pub fn module_meta_events<V, F>(
-    mut shader_events: EventReader<AssetEvent<Shader>>,
     mut module_meta_events: EventReader<AssetEvent<ModuleMeta>>,
     assets: Res<Assets<ModuleMeta>>,
     mut materials: ResMut<Assets<RustGpuMaterial<V, F>>>,
@@ -111,24 +113,6 @@ pub fn module_meta_events<V, F>(
     F: EntryPoint,
 {
     let mut changed_shaders = HashSet::default();
-
-    for event in shader_events.iter() {
-        match event {
-            AssetEvent::Created {
-                handle: shader_handle,
-            }
-            | AssetEvent::Modified {
-                handle: shader_handle,
-            } => {
-                // Remove meta in case the shader and meta load on different frames
-                SHADER_META.write().unwrap().remove(shader_handle);
-
-                // Mark this shader for material reloading
-                changed_shaders.insert(shader_handle);
-            }
-            _ => (),
-        }
-    }
 
     for event in module_meta_events.iter() {
         match event {

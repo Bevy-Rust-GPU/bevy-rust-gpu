@@ -34,6 +34,9 @@ impl Plugin for BevyRustGpuPlugin {
 
         info!("Setting max storage buffers per shader stage");
         constrained_limits.max_storage_buffers_per_shader_stage = 0;
+
+        // Add entry point export plugin
+        #[cfg(feature = "entry-point-export")]
+        app.add_plugin(crate::prelude::EntryPointExportPlugin);
     }
 }
-
