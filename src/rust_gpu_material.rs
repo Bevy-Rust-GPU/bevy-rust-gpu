@@ -16,6 +16,14 @@ use crate::prelude::{EntryPointSender, Export};
 #[cfg(feature = "shader-meta")]
 use crate::prelude::SHADER_META;
 
+pub const SHADER_DEFS: &[&'static str] = &[
+    "NO_STORAGE_BUFFERS_SUPPORT",
+    #[cfg(feature = "webgl")]
+    "NO_TEXTURE_ARRAYS_SUPPORT",
+    #[cfg(feature = "webgl")]
+    "SIXTEEN_BYTE_ALIGNMENT",
+];
+
 #[derive(ShaderType)]
 pub struct BaseMaterial {
     base: StandardMaterialUniform,
@@ -24,9 +32,7 @@ pub struct BaseMaterial {
 #[derive(Debug, Default, Clone)]
 pub struct ShaderMaterialKey {
     vertex_shader: Option<Handle<Shader>>,
-    vertex_defs: Vec<String>,
     fragment_shader: Option<Handle<Shader>>,
-    fragment_defs: Vec<String>,
     normal_map: bool,
     cull_mode: Option<Face>,
     #[cfg(feature = "entry-point-export")]
@@ -37,9 +43,7 @@ pub struct ShaderMaterialKey {
 impl PartialEq for ShaderMaterialKey {
     fn eq(&self, other: &Self) -> bool {
         self.vertex_shader.eq(&other.vertex_shader)
-            && self.vertex_defs.eq(&other.vertex_defs)
             && self.fragment_shader.eq(&other.fragment_shader)
-            && self.fragment_defs.eq(&other.fragment_defs)
             && self.normal_map.eq(&other.normal_map)
             && self.cull_mode.eq(&other.cull_mode)
             && self.iteration.eq(&other.iteration)
@@ -49,9 +53,7 @@ impl PartialEq for ShaderMaterialKey {
 impl std::hash::Hash for ShaderMaterialKey {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.vertex_shader.hash(state);
-        self.vertex_defs.hash(state);
         self.fragment_shader.hash(state);
-        self.fragment_defs.hash(state);
         self.normal_map.hash(state);
         self.cull_mode.hash(state);
         self.iteration.hash(state);
@@ -64,9 +66,7 @@ impl<V, F> From<&RustGpuMaterial<V, F>> for ShaderMaterialKey {
     fn from(value: &RustGpuMaterial<V, F>) -> Self {
         ShaderMaterialKey {
             vertex_shader: value.vertex_shader.clone(),
-            vertex_defs: value.vertex_defs.clone(),
             fragment_shader: value.fragment_shader.clone(),
-            fragment_defs: value.fragment_defs.clone(),
             normal_map: value.normal_map_texture.is_some(),
             cull_mode: value.base.cull_mode,
             #[cfg(feature = "entry-point-export")]
@@ -204,7 +204,7 @@ where
                 .shader_defs
                 .iter()
                 .cloned()
-                .chain(key.bind_group_data.vertex_defs.iter().cloned())
+                .chain(SHADER_DEFS.iter().map(ToString::to_string))
                 .collect();
 
             info!("Building vertex entrypoint");
@@ -259,7 +259,7 @@ where
                     .shader_defs
                     .iter()
                     .cloned()
-                    .chain(key.bind_group_data.fragment_defs.iter().cloned())
+                    .chain(SHADER_DEFS.iter().map(ToString::to_string))
                     .collect();
 
                 info!("Building fragment entrypoint");

@@ -46,16 +46,3 @@ impl EntryPoint for () {
     const NAME: &'static str = "";
     const PARAMETERS: EntryPointMappings = &[];
 }
-
-/// Manually compose `bevy_render` shader defs that aren't available during specialization
-pub fn rust_gpu_shader_defs() -> Vec<String> {
-    // NO_STORAGE_BUFFERS_SUPPORT is implied for now,
-    // since `rust-gpu` can't bind read-only storage buffers yet
-    let extra_defs = vec!["NO_STORAGE_BUFFERS_SUPPORT".to_string()];
-
-    // Same webgl logic as `bevy_render/src/render_resource/pipeline_cache.rs`
-    #[cfg(feature = "webgl")]
-    let extra_defs = extra_defs + vec!["NO_TEXTURE_ARRAYS_SUPPORT", "SIXTEEN_BYTE_ALIGNMENT"];
-
-    extra_defs
-}
