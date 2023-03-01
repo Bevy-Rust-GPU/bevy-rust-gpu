@@ -1,10 +1,38 @@
 # `bevy-rust-gpu`
 
-Bevy plugin for hot-recompiling and hot-reloading `rust-gpu` shader crates.
+A set of bevy plugins supporting the use of `rust-gpu` crates.
 
-Provides traits for defining interfaces to `rust-gpu` entrypoints and using them via material.
+Feature includes hot-reloading, metadata-based entrypoint validation, and hot-recompiling via runtime export of active entrypoints.
 
-Adds optional support for hot-reloading `rust-gpu` materials based on their `.spv.json` entrypoint metadata.
+## Usage
 
-Adds optional support for exporting used entrypoints to a JSON file for use with `permutate-macro`.
+`bevy-rust-gpu`'s core function is to codify `rust-gpu` shaders as an easy-to-use `bevy` asset.
 
+This is achieved via the `EntryPoint` trait, which can be implemented on a type to describe an entry point within a SPIR-V shader.
+
+Implementors of this trait can be plugged into `RustGpuMaterial` alongside handles to the corresponding SPIR-V module,
+which will then specialize its render machinery appropriately.
+
+## Feature Flags
+
+### `shader-meta`
+
+Adds `ShaderMetaPlugin` and the `ModuleMeta` asset representing `.spv.json` metadata, which can be inserted into the `ShaderMetaMap` resource to enable runtime entrypoint validation.
+
+This will prevent bevy from panicking when loading a shader with a missing entrypoint, fall back to the default,
+and re-specialize the material if the entrypoint becomes available after a reload.
+
+### `entry-point-export`
+
+Adds `EntryPointExportPlugin` and the `EntryPointExport` resource, which can be used to retrieve an `EntryPointSender` represending an output JSON file.
+When passed into `RustGpuMaterial`, this will cause active entrypoints to be aggregated and exported to the corresponding file.
+
+This can be used in concert with `shader-meta`'s entrypoint validation, `rust-gpu-builder`'s file watching functionality,
+and `permutate-macro`'s static permutation generation to drive a hot-recompile workflow:
+
+* The bevy app launches, loads a `RustGpuMaterial`, and exports the set of required entry points to `entry_points.json`
+* `rust-gpu-builder` picks up the change to `entry_points.json` and triggers a recompile
+* `permutate-macro` attributes in the target shader crates read `entry_points.json`, and conditionally compile the required entry points
+* `rust-gpu` compiles the generated code, outputting `shader.spv` and `shader.spv.json`
+* The bevy app picks up the changes to `shader.spv` and `shader.spv.json`, hot-reloads them, and respecializes the material with the newly-available entry points
+* Repeat as new materials are loaded by the bevy app
