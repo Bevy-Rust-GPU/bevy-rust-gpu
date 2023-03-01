@@ -1,4 +1,6 @@
-pub static SHADER_META: Lazy<RwLock<ShaderMeta>> = Lazy::new(Default::default);
+//! Adds support for loading `.spv.json` metadata
+
+pub (crate) static SHADER_META: Lazy<RwLock<ShaderMeta>> = Lazy::new(Default::default);
 
 use std::{marker::PhantomData, sync::RwLock};
 
@@ -19,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use crate::prelude::{EntryPoint, RustGpuMaterial};
 
 /// Handles the loading of `.spv.json` shader metadata,
-/// and using it to conditionally re-specialize `RustGpuMaterial` instances on reload
+/// and using it to conditionally re-specialize `RustGpuMaterial` instances on reload.
 pub struct ShaderMetaPlugin<V, F> {
     _phantom: PhantomData<(V, F)>,
 }
@@ -50,6 +52,7 @@ where
     }
 }
 
+/// Mapping between `Handle<Shader>` and `Handle<ModuleMeta>`
 #[derive(Debug, Default, Clone, Resource)]
 pub struct ShaderMetaMap {
     pub shader_to_meta: HashMap<Handle<Shader>, Handle<ModuleMeta>>,
@@ -82,17 +85,21 @@ impl ShaderMetaMap {
 }
 
 #[derive(Debug, Default, Clone, Deref, DerefMut)]
-pub struct ShaderMeta {
+pub (crate) struct ShaderMeta {
     pub metas: HashMap<Handle<Shader>, ModuleMeta>,
 }
 
+/// JSON asset corresponding to a `.json.spv` file.
 #[derive(Debug, Default, Clone, Serialize, Deserialize, TypeUuid)]
 #[uuid = "64a45932-95c4-42c7-a212-0598949d798f"]
 pub struct ModuleMeta {
+    /// List of entry points compiled into the corresponding `.spv` file.
     pub entry_points: Vec<String>,
+    /// Path to corresponding `.spv` file.
     pub module: String,
 }
 
+/// Listens for asset events, updates backend data, and triggers material re-specialization
 pub fn module_meta_events<V, F>(
     mut shader_events: EventReader<AssetEvent<Shader>>,
     mut module_meta_events: EventReader<AssetEvent<ModuleMeta>>,

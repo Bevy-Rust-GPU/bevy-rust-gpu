@@ -1,22 +1,39 @@
+//! Trait representation of a `rust-gpu` entry point.
+
+/// An entry point name for use with the [`EntryPoint`] trait
 pub type EntryPointName = &'static str;
-pub type EntryPointMappings =
+
+/// A set of entry compile parameters for use with the [`EntryPoint`] trait
+pub type EntryPointParameters =
     &'static [(&'static [(&'static str, &'static str)], &'static str)];
 
+/// A `rust-gpu` entry point for use with [`RustGpuMaterial`](crate::rust_gpu_material::RustGpuMaterial)
 pub trait EntryPoint: 'static + Send + Sync {
+    /// The entry point's base function name, including module path
+    ///
+    /// ```
+    /// const NAME: EntryPointName = "mesh::entry_points::vertex";
+    /// ```
     const NAME: &'static str;
-    const PARAMETERS: EntryPointMappings;
 
-    fn is_defined(shader_defs: &Vec<String>, def: &String) -> bool {
-        let def = def.into();
-        shader_defs.contains(def)
-    }
+    /// Mapping from bevy shader defs to `permutate-macro` parameters.
+    ///
+    /// ```
+    /// const PARAMETERS: EntryPointParameters = &[
+    ///     (&[("VERTEX_TANGENTS", "some")], "none"),
+    ///     (&[("VERTEX_COLORS", "some")], "none"),
+    ///     (&[("SKINNED", "some")], "none"),
+    /// ];
+    /// ```
+    const PARAMETERS: EntryPointParameters;
 
+    /// Constructs a permutation set from the provided shader defs
     fn permutation(shader_defs: &Vec<String>) -> Vec<String> {
         let mut permutation = vec![];
 
         for (defined, undefined) in Self::PARAMETERS.iter() {
             if let Some(mapping) = defined.iter().find_map(|(def, mapping)| {
-                if Self::is_defined(shader_defs, &def.to_string()) {
+                if shader_defs.contains(&def.to_string()) {
                     Some(mapping)
                 } else {
                     None
@@ -31,6 +48,7 @@ pub trait EntryPoint: 'static + Send + Sync {
         permutation
     }
 
+    /// Build an entry point name from the provided shader defs
     fn build(shader_defs: &Vec<String>) -> String {
         std::iter::once(Self::NAME.to_string())
             .chain(
@@ -44,5 +62,5 @@ pub trait EntryPoint: 'static + Send + Sync {
 
 impl EntryPoint for () {
     const NAME: &'static str = "";
-    const PARAMETERS: EntryPointMappings = &[];
+    const PARAMETERS: EntryPointParameters = &[];
 }
