@@ -381,6 +381,7 @@ pub fn shader_events<V, F>(
             | AssetEvent::Modified {
                 handle: shader_handle,
             } => {
+                #[cfg(feature = "shader-meta")]
                 // Remove meta in case the shader and meta load on different frames
                 SHADER_META.write().unwrap().remove(shader_handle);
 
