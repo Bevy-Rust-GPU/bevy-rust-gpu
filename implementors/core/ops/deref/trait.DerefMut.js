@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"bevy_rust_gpu":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.67.1/core/ops/deref/trait.DerefMut.html\" title=\"trait core::ops::deref::DerefMut\">DerefMut</a> for <a class=\"struct\" href=\"bevy_rust_gpu/shader_meta/struct.ChangedShaders.html\" title=\"struct bevy_rust_gpu::shader_meta::ChangedShaders\">ChangedShaders</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
