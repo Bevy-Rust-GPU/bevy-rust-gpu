@@ -15,7 +15,7 @@ impl LoadRustGpuShader for AssetServer {
         let path = path.into();
 
         let mut meta_path: PathBuf;
-        #[cfg(feature = "shader-meta")]
+        #[cfg(feature = "hot-reload")]
         {
             meta_path = path.clone();
             let last = meta_path.file_name().unwrap().to_str().unwrap().to_string();
@@ -26,7 +26,7 @@ impl LoadRustGpuShader for AssetServer {
         #[allow(unused_variables)]
         let shader = self.load(path);
 
-        #[cfg(feature = "shader-meta")]
+        #[cfg(feature = "hot-reload")]
         {
             let mut shader_meta_map = SHADER_META_MAP.write().unwrap();
             shader_meta_map.add(

@@ -11,7 +11,7 @@ use bevy::{
 
 use crate::prelude::{reload_materials, shader_events, EntryPoint, RustGpu};
 
-#[cfg(feature = "entry-point-export")]
+#[cfg(feature = "hot-rebuild")]
 use crate::prelude::ExportHandle;
 
 /// A [`Material`] type with statically-known `rust-gpu` vertex and fragment entry points.

@@ -23,7 +23,7 @@ pub fn shader_events<M>(
             | AssetEvent::Modified {
                 handle: shader_handle,
             } => {
-                #[cfg(feature = "shader-meta")]
+                #[cfg(feature = "hot-reload")]
                 // Remove meta in case the shader and meta load on different frames
                 SHADER_META.write().unwrap().remove(shader_handle);
 
@@ -67,7 +67,7 @@ pub fn reload_materials<M>(
     changed_shaders.clear();
 }
 
-#[cfg(feature = "shader-meta")]
+#[cfg(feature = "hot-reload")]
 /// Listens for [`ModuleMeta`] asset events, updates backend data,
 /// and aggregates change events for application in [`reload_materials`].
 pub fn module_meta_events<M>(

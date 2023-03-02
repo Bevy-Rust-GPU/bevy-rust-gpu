@@ -42,7 +42,7 @@ impl Plugin for RustGpuPlugin {
         app.init_resource::<ChangedShaders>();
 
         // Add entry point export plugin
-        #[cfg(feature = "entry-point-export")]
+        #[cfg(feature = "hot-rebuild")]
         app.add_plugin(crate::prelude::EntryPointExportPlugin);
     }
 }

@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["shader-meta", "entry-point-export", "bevy-pbr-rust"]
-shader-meta = []
-entry-point-export = []
+default = ["hot-reload", "hot-rebuild", "bevy-pbr-rust"]
+hot-reload = []
+hot-rebuild = []
 bevy-pbr-rust = []
 
 [dependencies]

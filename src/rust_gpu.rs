@@ -58,7 +58,7 @@ where
 
         app.add_plugin(MaterialPlugin::<RustGpu<M>>::default());
 
-        #[cfg(feature = "shader-meta")]
+        #[cfg(feature = "hot-reload")]
         app.add_plugin(crate::prelude::ShaderMetaPlugin::<M>::default());
     }
 }
@@ -72,7 +72,7 @@ where
     pub vertex_shader: Option<Handle<Shader>>,
     pub fragment_shader: Option<Handle<Shader>>,
     pub iteration: usize,
-    #[cfg(feature = "entry-point-export")]
+    #[cfg(feature = "hot-rebuild")]
     pub sender: Option<ExportHandle>,
 }
 
@@ -142,8 +142,8 @@ pub struct RustGpu<M> {
     pub iteration: usize,
 
     /// If `Some`, active entry points will be reported to this handle.
-    #[cfg(feature = "entry-point-export")]
-    pub sender: Option<ExportHandle>,
+    #[cfg(feature = "hot-rebuild")]
+    pub handle: Option<ExportHandle>,
 }
 
 impl<M> PartialEq for RustGpu<M>
@@ -223,7 +223,7 @@ where
                     vertex_shader: self.vertex_shader.clone(),
                     fragment_shader: self.fragment_shader.clone(),
                     iteration: self.iteration,
-                    #[cfg(feature = "entry-point-export")]
+                    #[cfg(feature = "hot-rebuild")]
                     sender: self.sender.clone(),
                 },
             })
@@ -295,7 +295,7 @@ where
             #[allow(unused_mut)]
             let mut apply = true;
 
-            #[cfg(feature = "shader-meta")]
+            #[cfg(feature = "hot-reload")]
             {
                 let metas = SHADER_META.read().unwrap();
                 if let Some(vertex_meta) = metas.get(&vertex_shader) {
@@ -307,7 +307,7 @@ where
                 }
             }
 
-            #[cfg(feature = "entry-point-export")]
+            #[cfg(feature = "hot-rebuild")]
             if let Some(sender) = &key.bind_group_data.sender {
                 info!("Entrypoint sender is valid");
                 sender
@@ -344,7 +344,7 @@ where
                 #[allow(unused_mut)]
                 let mut apply = true;
 
-                #[cfg(feature = "shader-meta")]
+                #[cfg(feature = "hot-reload")]
                 {
                     info!("Fragment meta is present");
                     let metas = SHADER_META.read().unwrap();
@@ -357,7 +357,7 @@ where
                     }
                 }
 
-                #[cfg(feature = "entry-point-export")]
+                #[cfg(feature = "hot-rebuild")]
                 if let Some(sender) = &key.bind_group_data.sender {
                     sender
                         .send(Export {

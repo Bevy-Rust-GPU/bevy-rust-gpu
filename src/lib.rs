@@ -25,10 +25,10 @@ pub use rust_gpu_material::RustGpuMaterial;
 #[cfg(feature = "bevy-pbr-rust")]
 pub mod bevy_pbr_rust;
 
-#[cfg(feature = "shader-meta")]
+#[cfg(feature = "hot-reload")]
 pub mod shader_meta;
 
-#[cfg(feature = "entry-point-export")]
+#[cfg(feature = "hot-rebuild")]
 pub mod entry_point_export;
 
 pub mod prelude;
