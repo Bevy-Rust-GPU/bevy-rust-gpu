@@ -1,4 +1,8 @@
-# `bevy-rust-gpu`
+<div align="center">
+
+# `🐉 bevy-rust-gpu`
+
+[![Documentation](https://img.shields.io/badge/docs-API-blue)](https://bevy-rust-gpu.github.io/bevy-rust-gpu/bevy_rust_gpu/)
 
 A set of bevy plugins supporting the use of `rust-gpu` crates.
 
