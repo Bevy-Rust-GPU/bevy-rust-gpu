@@ -34,7 +34,7 @@ jobs:
           command: doc
           args: --release --all-features --no-deps
 
-      - id: Repository basename
+      - id: repo-basename
         run: echo "value=`basename ${{ github.repository }}`" >> $GITHUB_OUTPUT
         shell: bash
 
