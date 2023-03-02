@@ -1,6 +1,4 @@
-//! Adds support for loading `.spv.json` metadata
-
-pub(crate) static SHADER_META: Lazy<RwLock<ShaderMeta>> = Lazy::new(Default::default);
+//! Adds support for loading `.spv.json` metadata.
 
 use std::{marker::PhantomData, sync::RwLock};
 
@@ -8,8 +6,8 @@ use once_cell::sync::Lazy;
 
 use bevy::{
     prelude::{
-        default, info, AssetEvent, Assets, Deref, DerefMut, EventReader, Handle, Plugin, Res,
-        ResMut, Resource, Shader, IntoSystemDescriptor,
+        default, info, AssetEvent, Assets, Deref, DerefMut, EventReader, Handle,
+        IntoSystemDescriptor, Plugin, Res, ResMut, Resource, Shader,
     },
     reflect::TypeUuid,
     utils::{HashMap, HashSet},
@@ -18,15 +16,18 @@ use bevy_common_assets::json::JsonAssetPlugin;
 
 use serde::{Deserialize, Serialize};
 
-use crate::prelude::{EntryPoint, RustGpuMaterial, shader_events};
+use crate::prelude::{reload_materials, RustGpuMaterial};
+
+pub(crate) static SHADER_META: Lazy<RwLock<ShaderMeta>> = Lazy::new(Default::default);
+pub(crate) static SHADER_META_MAP: Lazy<RwLock<ShaderMetaMap>> = Lazy::new(Default::default);
 
 /// Handles the loading of `.spv.json` shader metadata,
 /// and using it to conditionally re-specialize `RustGpuMaterial` instances on reload.
-pub struct ShaderMetaPlugin<V, F> {
-    _phantom: PhantomData<(V, F)>,
+pub struct ShaderMetaPlugin<M> {
+    _phantom: PhantomData<M>,
 }
 
-impl<V, F> Default for ShaderMetaPlugin<V, F> {
+impl<M> Default for ShaderMetaPlugin<M> {
     fn default() -> Self {
         ShaderMetaPlugin {
             _phantom: default(),
@@ -34,23 +35,18 @@ impl<V, F> Default for ShaderMetaPlugin<V, F> {
     }
 }
 
-impl<V, F> Plugin for ShaderMetaPlugin<V, F>
+impl<M> Plugin for ShaderMetaPlugin<M>
 where
-    V: EntryPoint,
-    F: EntryPoint,
+    M: RustGpuMaterial,
 {
     fn build(&self, app: &mut bevy::prelude::App) {
         if !app.is_plugin_added::<JsonAssetPlugin<ModuleMeta>>() {
             app.add_plugin(JsonAssetPlugin::<ModuleMeta>::new(&["spv.json"]));
         }
 
-        if !app.world.contains_resource::<ShaderMetaMap>() {
-            app.init_resource::<ShaderMetaMap>();
-        }
-
         app.add_system_to_stage(
             bevy::prelude::CoreStage::Last,
-            module_meta_events::<V, F>.after(shader_events::<V, F>),
+            module_meta_events::<M>.before(reload_materials::<M>),
         );
     }
 }
@@ -102,24 +98,26 @@ pub struct ModuleMeta {
     pub module: String,
 }
 
+/// A resource to track `rust-gpu` shaders that have been reloaded on a given frame
+#[derive(Debug, Default, Clone, Deref, DerefMut, Resource)]
+pub struct ChangedShaders(pub HashSet<Handle<Shader>>);
+
 /// Listens for asset events, updates backend data, and triggers material re-specialization
-pub fn module_meta_events<V, F>(
+pub fn module_meta_events<M>(
     mut module_meta_events: EventReader<AssetEvent<ModuleMeta>>,
     assets: Res<Assets<ModuleMeta>>,
-    mut materials: ResMut<Assets<RustGpuMaterial<V, F>>>,
-    shader_meta_map: ResMut<ShaderMetaMap>,
+    mut changed_shaders: ResMut<ChangedShaders>,
 ) where
-    V: EntryPoint,
-    F: EntryPoint,
+    M: RustGpuMaterial,
 {
-    let mut changed_shaders = HashSet::default();
+    let shader_meta_map = SHADER_META_MAP.read().unwrap();
 
     for event in module_meta_events.iter() {
         match event {
             AssetEvent::Created { handle } | AssetEvent::Modified { handle } => {
                 // If this meta has an associated shader, mark it for material reloading
                 if let Some(shader) = shader_meta_map.shader(handle) {
-                    changed_shaders.insert(shader);
+                    changed_shaders.insert(shader.clone_weak());
 
                     // Update module meta
                     if let Some(asset) = assets.get(handle) {
@@ -132,27 +130,6 @@ pub fn module_meta_events<V, F>(
                 }
             }
             _ => (),
-        }
-    }
-
-    // Reload all materials with shaders that have changed
-    for (_, material) in materials.iter_mut() {
-        let mut reload = false;
-
-        if let Some(vertex_shader) = &material.vertex_shader {
-            if changed_shaders.contains(vertex_shader) {
-                reload = true;
-            }
-        }
-
-        if let Some(fragment_shader) = &material.fragment_shader {
-            if changed_shaders.contains(fragment_shader) {
-                reload = true;
-            }
-        }
-
-        if reload {
-            material.iteration += 1;
         }
     }
 }

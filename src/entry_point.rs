@@ -1,13 +1,13 @@
 //! Trait representation of a `rust-gpu` entry point.
 
-/// An entry point name for use with the [`EntryPoint`] trait
+/// An entry point name for use with the [`EntryPoint`] trait.
 pub type EntryPointName = &'static str;
 
-/// A set of entry compile parameters for use with the [`EntryPoint`] trait
+/// A set of entry compile parameters for use with the [`EntryPoint`] trait.
 pub type EntryPointParameters =
     &'static [(&'static [(&'static str, &'static str)], &'static str)];
 
-/// A `rust-gpu` entry point for use with [`RustGpuMaterial`](crate::rust_gpu_material::RustGpuMaterial)
+/// A `rust-gpu` entry point for use with [`RustGpuMaterial`](crate::rust_gpu_material::RustGpuMaterial).
 pub trait EntryPoint: 'static + Send + Sync {
     /// The entry point's base function name, including module path
     ///

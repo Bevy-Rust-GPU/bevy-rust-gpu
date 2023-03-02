@@ -1,4 +1,4 @@
-//! Adds support for exporting the active entrypoint set to a `.json` file.
+//! Adds support for exporting the active entry point set to a `.json` file.
 //!
 //! This can be used in conjunction with `rust-gpu-builder` and `permutate-macro` to drive hot-recompiles.
 
@@ -36,8 +36,8 @@ impl Plugin for EntryPointExportPlugin {
     }
 }
 
-/// MPSC sender carrying entry points for export.
-pub type EntryPointSender = SyncSender<Export>;
+/// Handle to an entry point file export
+pub type ExportHandle = SyncSender<Export>;
 
 /// MPSC reciever carrying entry points for export.
 type EntryPointReceiver = Receiver<Export>;
@@ -59,7 +59,7 @@ struct EntryPoints {
 /// Container for a set of entry points, with MPSC handles and change tracking
 #[derive(Debug)]
 struct EntryPointExportContainer {
-    tx: EntryPointSender,
+    tx: ExportHandle,
     rx: EntryPointReceiver,
     entry_points: EntryPoints,
     changed: bool,
@@ -86,9 +86,9 @@ pub struct EntryPointExport {
 
 impl EntryPointExport {
     /// Registers a path to which entrypoints will be exported,
-    /// returning a corresponding [`EntryPointSender`] that can be passed to a
-    /// [`RustGpuMaterial`](crate::rust_gpu_material::RustGpuMaterial).
-    pub fn export<T: Into<PathBuf>>(&mut self, path: T) -> EntryPointSender {
+    /// returning a corresponding [`ExportHandle`] that can be passed to a
+    /// [`RustGpu`](crate::rust_gpu::RustGpu) material.
+    pub fn export<T: Into<PathBuf>>(&mut self, path: T) -> ExportHandle {
         self.exports.entry(path.into()).or_default().tx.clone()
     }
 

@@ -1,14 +1,17 @@
-//! Base Rust-GPU plugin
+//! Main Rust-GPU plugin.
 
 use bevy::{
     prelude::{default, info, Plugin},
     render::{settings::WgpuSettings, RenderPlugin},
 };
 
-/// Handles enforcing WGPU limitations required by `rust-gpu`
-pub struct BevyRustGpuPlugin;
+use crate::prelude::ChangedShaders;
 
-impl Plugin for BevyRustGpuPlugin {
+/// Enforces WGPU limitations required by `rust-gpu`,
+/// and runs initial backend setup.
+pub struct RustGpuPlugin;
+
+impl Plugin for RustGpuPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         // Panic if added too late for `WgpuSettings` to take effect
         if app.is_plugin_added::<RenderPlugin>() {
@@ -34,6 +37,9 @@ impl Plugin for BevyRustGpuPlugin {
 
         info!("Setting max storage buffers per shader stage");
         constrained_limits.max_storage_buffers_per_shader_stage = 0;
+
+        // Initialize `ChangedShaders` resource
+        app.init_resource::<ChangedShaders>();
 
         // Add entry point export plugin
         #[cfg(feature = "entry-point-export")]

@@ -1,4 +1,4 @@
-pub use crate::{entry_point::*, rust_gpu_material::*, *};
+pub use crate::{entry_point::*, plugin::*, rust_gpu::*, rust_gpu_material::*, systems::*, *};
 
 #[cfg(feature = "entry-point-export")]
 pub use crate::entry_point_export::*;
