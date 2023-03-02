@@ -5,4 +5,4 @@ on:
 
 jobs:
   publish-cargo-doc:
-    uses: Shfty/github-actions/.github/workflows/publish-cargo-doc.yml@master
+    uses: Shfty/github-actions/.github/workflows/publish-rust-docs.yml@master
