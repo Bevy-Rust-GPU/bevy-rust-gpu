@@ -35,7 +35,7 @@ jobs:
           args: --release --all-features --no-deps
 
       - id: repo-basename
-        run: echo "value=`basename ${{ github.repository }}`" >> $GITHUB_OUTPUT
+        run: echo "value=`basename ${{ github.repository }} | sed \"s/-/_/g\"`" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Inject index.html
