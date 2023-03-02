@@ -73,7 +73,7 @@ where
     pub fragment_shader: Option<Handle<Shader>>,
     pub iteration: usize,
     #[cfg(feature = "hot-rebuild")]
-    pub sender: Option<ExportHandle>,
+    pub export_handle: Option<ExportHandle>,
 }
 
 impl<M> Clone for RustGpuKey<M>
@@ -87,7 +87,7 @@ where
             vertex_shader: self.vertex_shader.clone(),
             fragment_shader: self.fragment_shader.clone(),
             iteration: self.iteration.clone(),
-            sender: self.sender.clone(),
+            export_handle: self.export_handle.clone(),
         }
     }
 }
@@ -143,7 +143,7 @@ pub struct RustGpu<M> {
 
     /// If `Some`, active entry points will be reported to this handle.
     #[cfg(feature = "hot-rebuild")]
-    pub handle: Option<ExportHandle>,
+    pub export_handle: Option<ExportHandle>,
 }
 
 impl<M> PartialEq for RustGpu<M>
@@ -224,7 +224,7 @@ where
                     fragment_shader: self.fragment_shader.clone(),
                     iteration: self.iteration,
                     #[cfg(feature = "hot-rebuild")]
-                    sender: self.sender.clone(),
+                    export_handle: self.export_handle.clone(),
                 },
             })
     }
@@ -308,7 +308,7 @@ where
             }
 
             #[cfg(feature = "hot-rebuild")]
-            if let Some(sender) = &key.bind_group_data.sender {
+            if let Some(sender) = &key.bind_group_data.export_handle {
                 info!("Entrypoint sender is valid");
                 sender
                     .send(Export {
@@ -358,7 +358,7 @@ where
                 }
 
                 #[cfg(feature = "hot-rebuild")]
-                if let Some(sender) = &key.bind_group_data.sender {
+                if let Some(sender) = &key.bind_group_data.export_handle {
                     sender
                         .send(Export {
                             shader: M::Fragment::NAME,
