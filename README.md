@@ -7,6 +7,7 @@
 A set of bevy plugins supporting the use of `rust-gpu` crates.
 
 Feature includes hot-reloading, metadata-based entrypoint validation, and hot-recompiling via runtime export of active entrypoints.
+</div>
 
 ## Usage
 
