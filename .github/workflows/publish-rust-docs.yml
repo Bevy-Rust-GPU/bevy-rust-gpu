@@ -2,50 +2,7 @@ name: Publish Rust Docs
 run-name: ${{ github.actor }} is publishing documentation 🚀
 on:
   push:
-  workflow_call:
 
 jobs:
   publish-cargo-doc:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v3
-
-      - name: Install dependencies
-        run: sudo apt install librust-alsa-sys-dev libudev-dev
-
-      - name: Cache
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            ~/.cargo/bin
-            target
-            target/debug
-            target/release
-            target/doc
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: cargo doc
-        uses: actions-rs/cargo@v1.0.1
-        with:
-          command: doc
-          args: --release --all-features --no-deps
-
-      - id: repo-basename
-        run: echo "value=`basename ${{ github.repository }} | sed \"s/-/_/g\"`" >> $GITHUB_OUTPUT
-        shell: bash
-
-      - name: Inject index.html
-        run: echo "<meta http-equiv=\"refresh\" content=\"0; url=${{ steps.repo-basename.outputs.value }}\">" > target/doc/index.html
-
-      - name: Deploy
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: "${{ github.workspace }}/target/doc"
+    uses: Shfty/github-actions/.github/workflows/publish-cargo-doc.yml@master
