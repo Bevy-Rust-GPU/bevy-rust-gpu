@@ -1,6 +1,9 @@
 name: Publish Rust Docs
 run-name: ${{ github.actor }} is publishing documentation 🚀
-on: [push]
+on:
+  push:
+  workflow_call:
+
 jobs:
   publish-cargo-doc:
     runs-on: ubuntu-latest
