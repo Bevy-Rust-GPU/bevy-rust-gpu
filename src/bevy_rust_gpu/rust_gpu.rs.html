@@ -459,7 +459,7 @@
     <span class="kw">pub </span>fragment_shader: <span class="prelude-ty">Option</span>&lt;Handle&lt;Shader&gt;&gt;,
     <span class="kw">pub </span>iteration: usize,
     <span class="attr">#[cfg(feature = <span class="string">&quot;hot-rebuild&quot;</span>)]
-    </span><span class="kw">pub </span>sender: <span class="prelude-ty">Option</span>&lt;ExportHandle&gt;,
+    </span><span class="kw">pub </span>export_handle: <span class="prelude-ty">Option</span>&lt;ExportHandle&gt;,
 }
 
 <span class="kw">impl</span>&lt;M&gt; Clone <span class="kw">for </span>RustGpuKey&lt;M&gt;
@@ -473,7 +473,7 @@
             vertex_shader: <span class="self">self</span>.vertex_shader.clone(),
             fragment_shader: <span class="self">self</span>.fragment_shader.clone(),
             iteration: <span class="self">self</span>.iteration.clone(),
-            sender: <span class="self">self</span>.sender.clone(),
+            export_handle: <span class="self">self</span>.export_handle.clone(),
         }
     }
 }
@@ -529,7 +529,7 @@
 
     <span class="doccomment">/// If `Some`, active entry points will be reported to this handle.
     </span><span class="attr">#[cfg(feature = <span class="string">&quot;hot-rebuild&quot;</span>)]
-    </span><span class="kw">pub </span>handle: <span class="prelude-ty">Option</span>&lt;ExportHandle&gt;,
+    </span><span class="kw">pub </span>export_handle: <span class="prelude-ty">Option</span>&lt;ExportHandle&gt;,
 }
 
 <span class="kw">impl</span>&lt;M&gt; PartialEq <span class="kw">for </span>RustGpu&lt;M&gt;
@@ -610,7 +610,7 @@
                     fragment_shader: <span class="self">self</span>.fragment_shader.clone(),
                     iteration: <span class="self">self</span>.iteration,
                     <span class="attr">#[cfg(feature = <span class="string">&quot;hot-rebuild&quot;</span>)]
-                    </span>sender: <span class="self">self</span>.sender.clone(),
+                    </span>export_handle: <span class="self">self</span>.export_handle.clone(),
                 },
             })
     }
@@ -694,7 +694,7 @@
             }
 
             <span class="attr">#[cfg(feature = <span class="string">&quot;hot-rebuild&quot;</span>)]
-            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(sender) = <span class="kw-2">&amp;</span>key.bind_group_data.sender {
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(sender) = <span class="kw-2">&amp;</span>key.bind_group_data.export_handle {
                 <span class="macro">info!</span>(<span class="string">&quot;Entrypoint sender is valid&quot;</span>);
                 sender
                     .send(Export {
@@ -744,7 +744,7 @@
                 }
 
                 <span class="attr">#[cfg(feature = <span class="string">&quot;hot-rebuild&quot;</span>)]
-                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(sender) = <span class="kw-2">&amp;</span>key.bind_group_data.sender {
+                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(sender) = <span class="kw-2">&amp;</span>key.bind_group_data.export_handle {
                     sender
                         .send(Export {
                             shader: M::Fragment::NAME,
