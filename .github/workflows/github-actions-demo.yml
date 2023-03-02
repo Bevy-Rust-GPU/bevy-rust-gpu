@@ -1,0 +1,39 @@
+name: GitHub Actions Demo
+run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
+on: [push]
+jobs:
+  Explore-GitHub-Actions:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Install dependencies
+        run: sudo apt install librust-alsa-sys-dev libudev-dev
+      - name: Cache Cargo
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin
+            target
+            target/debug
+            target/release
+            target/doc
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Run cargo doc
+        uses: actions-rs/cargo@v1.0.1
+        with:
+          command: doc
+          args: --release --all-features --no-deps
+      - name: Inject index.html
+        run: echo "<meta http-equiv=\"refresh\" content=\"0; url=bevy_rust_gpu\">" > target/doc/index.html
+      - name: Deploy docs
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: "${{ github.workspace }}/target/doc"
