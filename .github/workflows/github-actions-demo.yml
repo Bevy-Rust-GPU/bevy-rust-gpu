@@ -1,5 +1,5 @@
 name: Publish Rust Docs
-run-name: ${{ github.actor }} is publishing Rust documentation 🚀
+run-name: ${{ github.actor }} is publishing documentation 🚀
 on: [push]
 jobs:
   publish-cargo-doc:
