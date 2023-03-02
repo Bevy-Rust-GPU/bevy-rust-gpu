@@ -2,7 +2,7 @@ name: Publish Rust Docs
 run-name: ${{ github.actor }} is publishing Rust documentation 🚀
 on: [push]
 jobs:
-  Explore-GitHub-Actions:
+  publish-cargo-doc:
     runs-on: ubuntu-latest
     permissions:
       contents: write
