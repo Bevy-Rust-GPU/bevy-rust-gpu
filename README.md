@@ -50,3 +50,7 @@ and `permutate-macro`'s static permutation generation to drive a hot-rebuild wor
 * `rust-gpu` compiles the generated code, outputting `shader.spv` and `shader.spv.json`
 * The bevy app picks up the changes to `shader.spv` and `shader.spv.json`, hot-reloads them, and respecializes the material with the now-available entry points
 * Repeat as new `RustGpu` materials are loaded by the bevy app
+
+### `bevy-pbr-rust`
+
+Implements `RustGpu` for `StandardMaterial` via the `MeshVertex` and `PbrFragment` entry point markers.
