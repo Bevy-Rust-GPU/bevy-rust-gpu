@@ -6,7 +6,7 @@
 
 A set of bevy plugins supporting the use of [`rust-gpu`](https://github.com/EmbarkStudios/rust-gpu) shader crates.
 
-Feature includes hot-reloading with metadata-based entrypoint validation, and hot-recompiling via runtime export of active entrypoints.
+Features include hot-reloading with metadata-based entrypoint validation, and hot-recompiling via runtime export of active entrypoints.
 </div>
 
 ## Usage
