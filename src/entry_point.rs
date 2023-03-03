@@ -12,6 +12,7 @@ pub trait EntryPoint: 'static + Send + Sync {
     /// The entry point's base function name, including module path
     ///
     /// ```
+    /// # use bevy_rust_gpu::prelude::EntryPointName;
     /// const NAME: EntryPointName = "mesh::entry_points::vertex";
     /// ```
     const NAME: &'static str;
@@ -19,6 +20,7 @@ pub trait EntryPoint: 'static + Send + Sync {
     /// Mapping from bevy shader defs to `permutate-macro` parameters.
     ///
     /// ```
+    /// # use bevy_rust_gpu::prelude::EntryPointParameters;
     /// const PARAMETERS: EntryPointParameters = &[
     ///     (&[("VERTEX_TANGENTS", "some")], "none"),
     ///     (&[("VERTEX_COLORS", "some")], "none"),
