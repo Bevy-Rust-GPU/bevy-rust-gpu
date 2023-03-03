@@ -1,6 +1,6 @@
 <div align="center">
 
-# `🐉 bevy-rust-gpu`
+# `🐉bevy-rust-gpu`
 
 [![Documentation](https://img.shields.io/badge/docs-API-blue)](https://bevy-rust-gpu.github.io/bevy-rust-gpu/bevy_rust_gpu/)
 
