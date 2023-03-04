@@ -112,7 +112,8 @@ Finally, load your shader, and add it to a material:
 ```rust
 fn setup(materials: ResMut<Assets<RustGpu<MyRustGpuMaterial>>>) {
     // Extension method provided by the LoadRustGpuShader trait
-    // Returns a RustGpuShader, which is akin to Handle<Shader> with some extra hot-reloading machinery.
+    // Returns a RustGpuShader, which is akin to Handle<Shader>
+    // with some extra hot-reloading machinery.
     let shader = asset_server.load_rust_gpu_shader(SHADER_PATH);
 
     // Add it to a RustGpu material, which can be used with bevy's MaterialMeshBundle
@@ -121,9 +122,16 @@ fn setup(materials: ResMut<Assets<RustGpu<MyRustGpuMaterial>>>) {
         fragment_shader = Some(shader),
         ..default()
     });
+
+    // Create cube mesh
+    let mesh = meshes.add(Cube { size: 1.0 }.into());
     
-    // Use material as per any other
-    ...
+    // Spawn a mesh with our rust-gpu material
+    commands.spawn(MaterialMeshBundle {
+        mesh,
+        material,
+        ..default()
+    });
 }
 ```
 
