@@ -22,31 +22,101 @@ As such, its use implies all the caveats of the above, plus the following:
 * [Using SPIR-V in a bevy `Material` requires a custom `bevy` fork](https://github.com/Bevy-Rust-GPU/bevy-rust-gpu/issues/12)
 * [Storage buffers are currently unsupported](https://github.com/Bevy-Rust-GPU/bevy-rust-gpu/issues/13)
 
-Beyond that, `bevy-rust-gpu` is also in active development, but has a low user-facing API footprint.
+Beyond that, `bevy-rust-gpu` is also in active development, but has a relatively small user-facing API footprint.
 Major changes will be driven by development in the upstream `bevy` and `rust-gpu` crates.
 
+In practical terms, it's able to support the hot-rebuild workflow depicted above,
+and allows for relatively complex shader implementations (storage buffer issues notwithstanding), such as [a Rust reimplementation of `bevy_pbr`](https://github.com/Bevy-Rust-GPU/bevy-pbr-rust).
+
 Currently, none of the [Bevy Rust-GPU](https://github.com/Bevy-Rust-GPU) crates are published on crates.io;
-this may change as and when the major caveats are solved, but in the meantime will be hosted on github and versioned via tag.
+this may change as and when the major caveats are solved, but in the meantime will be hosted on github and versioned by tag.
 
 ## Usage
 
-First, implement a `Material` type to describe your material's bind group layout and pipeline specialization.
-The vertex and fragment shaders specified here will be used as the fallback if their `rust-gpu` equivalents are not available,
-so can be left to the default `Material` implementation if desired.
+First, add `bevy-rust-gpu` to your `Cargo.toml`:
+
+```toml
+[dependencies]
+bevy-rust-gpu = { git = "https://github.com/Bevy-Rust-GPU/bevy-rust-gpu", tag = "v0.3.0" }
+```
+
+Next, implement a `Material` type to describe your material's bind group layout and pipeline specialization:
+
+```rust
+struct MyRustGpuMaterial {
+    #[uniform(0)]
+    color: Vec4,
+}
+
+// The vertex and fragment shaders specified here can be used as a fallback
+// when entrypoints are unavailable (see the documentation of bevy_rust_gpu::prelude::RustGpuSettings),
+// but are otherwise deferred to ShaderRef::Default, so can be left unimplemented.
+impl Material for MyRustGpuMaterial {}
+```
 
 Then, implement `RustGpuMaterial` for your `Material` type.
-This will require creating marker structs to represent its vertex and fragment shaders,
-and implementing the `EntryPoint` trait on them to describe entry point names and compile-time parameters.
+
+```rust
+// First, implement some marker structs to represent our shader entry points
+
+pub enum MyVertex {}
+
+impl EntryPoint for MyVertex {
+    const NAME: EntryPointName = "vertex";
+    const PARAMETERS: EntryPointParameters = &[];
+}
+
+pub enum MyFragment {}
+
+impl EntryPoint for MyFragment {
+    const NAME: EntryPointName = "fragment";
+    const PARAMETERS: EntryPointParameters = &[];
+}
+
+// Then, impl RustGpuMaterial for our material to tie them together
+
+impl RustGpuMaterial for MyRustGpuMaterial {
+    type Vertex = MyVertex;
+    type Fragment = MyFragment;
+}
+```
+
 (See [`bevy_pbr_rust.rs`](https://github.com/Bevy-Rust-GPU/bevy-rust-gpu/blob/master/src/bevy_pbr_rust.rs) for the [`bevy-pbr-rust`](https://github.com/Bevy-Rust-GPU/bevy-pbr-rust)-backed `StandardMaterial` reference implementation.)
 
 Next, add `RustGpuPlugin` to your bevy app to configure the backend.
-Currently this must occur before `RenderPlugin` is added (most often via `DefaultPlugins`), as it requires early access to `WgpuSettings` to disable storage buffer support.
+
+```rust
+    let mut app = App::default();
+    app.add_plugin(RustGpuPlugin); // Must be before RenderPlugin, i.e. before DefaultPlugins
+    app.add_plugins(DefaultPlugins);
+```
 
 For each `RustGpuMaterial` implementor, add a `RustGpuMaterialPlugin::<M>` to your app to setup rendering machinery and hot-reload / hot-rebuild support if the respective features are enabled (see below.)
 
-When instantiating `RustGpu` materials, `RustGpuShader` handles will be required.
-These are equivalent to `Handle<Shader>` with some extra hot-reloading machinery,
-and can be acquired via the `AssetServer::load_rust_gpu_shader` extension method provided by the `LoadRustGpuShader` trait.
+```rust
+    app.add_plugin(RustGpuMaterialPlugin::<MyRustGpuMaterial>::default());
+
+```
+
+Finally, load your shader, and add it to a material:
+
+```rust
+fn setup(materials: ResMut<Assets<RustGpu<MyRustGpuMaterial>>>) {
+    // Extension method provided by the LoadRustGpuShader trait
+    // Returns a RustGpuShader, which is akin to Handle<Shader> with some extra hot-reloading machinery.
+    let shader = asset_server.load_rust_gpu_shader(SHADER_PATH);
+
+    // Add it to a RustGpu material, which can be used with bevy's MaterialMeshBundle
+    let material = materials.add(RustGpu {
+        vertex_shader = Some(shader),
+        fragment_shader = Some(shader),
+        ..default()
+    });
+    
+    // Use material as per any other
+    ...
+}
+```
 
 ## Feature Flags
 
