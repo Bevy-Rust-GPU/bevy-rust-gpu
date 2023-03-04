@@ -40,7 +40,6 @@ First, add `bevy-rust-gpu` to your `Cargo.toml`:
 bevy-rust-gpu = { git = "https://github.com/Bevy-Rust-GPU/bevy-rust-gpu", tag = "v0.3.0" }
 ```
 
-
 Next, implement a `Material` type to describe your material's bind group layout and pipeline specialization:
 
 ```rust
@@ -57,7 +56,6 @@ struct MyRustGpuMaterial {
 // but are otherwise deferred to ShaderRef::Default, so can be left unimplemented.
 impl Material for MyRustGpuMaterial {}
 ```
-
 
 Then, implement `RustGpuMaterial` for your `Material` type.
 
@@ -88,7 +86,6 @@ impl RustGpuMaterial for MyRustGpuMaterial {
 
 (See [`bevy_pbr_rust.rs`](https://github.com/Bevy-Rust-GPU/bevy-rust-gpu/blob/master/src/bevy_pbr_rust.rs) for the [`bevy-pbr-rust`](https://github.com/Bevy-Rust-GPU/bevy-pbr-rust)-backed `StandardMaterial` reference implementation.)
 
-
 Next, add `RustGpuPlugin` to your bevy app to configure the backend.
 
 ```rust
@@ -96,7 +93,6 @@ Next, add `RustGpuPlugin` to your bevy app to configure the backend.
     app.add_plugin(RustGpuPlugin); // Must be before RenderPlugin, i.e. before DefaultPlugins
     app.add_plugins(DefaultPlugins);
 ```
-
 
 For each `RustGpuMaterial` implementor, add a `RustGpuMaterialPlugin::<M>` to your app to setup backend rendering machinery.
 This will also configure hot-reloading and hot-rebuilding if the corresponding features are enabled.
@@ -106,12 +102,10 @@ This will also configure hot-reloading and hot-rebuilding if the corresponding f
 
 ```
 
-
 If using hot-rebuilding, tell the material where to export its entry points:
 ```rust
     RustGpu::<ExampleMaterial>::export_to(ENTRY_POINTS_PATH);
 ```
-
 
 Finally, load your shader, and add it to a material:
 
