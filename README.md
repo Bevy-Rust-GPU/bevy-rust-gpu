@@ -25,7 +25,7 @@ As such, its use implies all the caveats of the above, plus the following:
 Beyond that, `bevy-rust-gpu` is also in active development, but has a relatively small user-facing API footprint.
 Major changes will be driven by development in the upstream `bevy` and `rust-gpu` crates.
 
-In practical terms, it's able to support the hot-rebuild workflow depicted above,
+In practical terms, its current state is able to support the hot-rebuild workflow depicted above,
 and allows for relatively complex shader implementations (storage buffer issues notwithstanding), such as [a Rust reimplementation of `bevy_pbr`](https://github.com/Bevy-Rust-GPU/bevy-pbr-rust).
 
 Currently, none of the [Bevy Rust-GPU](https://github.com/Bevy-Rust-GPU) crates are published on crates.io;
