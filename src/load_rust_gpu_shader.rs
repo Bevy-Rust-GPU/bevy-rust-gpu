@@ -2,8 +2,6 @@ use std::path::PathBuf;
 
 use bevy::prelude::{AssetServer, Handle, Shader};
 
-use crate::prelude::SHADER_META_MAP;
-
 #[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RustGpuShader(pub(crate) Handle<Shader>);
 
@@ -30,7 +28,7 @@ impl LoadRustGpuShader for AssetServer {
 
         #[cfg(feature = "hot-reload")]
         {
-            let mut shader_meta_map = SHADER_META_MAP.write().unwrap();
+            let mut shader_meta_map = crate::prelude::SHADER_META_MAP.write().unwrap();
             shader_meta_map.add(
                 shader.clone_weak(),
                 self.load::<crate::prelude::ModuleMeta, _>(meta_path),

@@ -3,7 +3,7 @@
 use bevy::prelude::{info, AssetEvent, Assets, EventReader, Res, ResMut, Shader};
 
 use crate::{
-    prelude::{ChangedShaders, ModuleMeta, RustGpuMaterial, SHADER_META, SHADER_META_MAP},
+    prelude::{ChangedShaders, RustGpuMaterial},
     RustGpu,
 };
 
@@ -25,7 +25,7 @@ pub fn shader_events<M>(
             } => {
                 #[cfg(feature = "hot-reload")]
                 // Remove meta in case the shader and meta load on different frames
-                SHADER_META.write().unwrap().remove(shader_handle);
+                crate::prelude::SHADER_META.write().unwrap().remove(shader_handle);
 
                 // Mark this shader for material reloading
                 changed_shaders.insert(shader_handle.clone_weak());
@@ -71,13 +71,13 @@ pub fn reload_materials<M>(
 /// Listens for [`ModuleMeta`] asset events, updates backend data,
 /// and aggregates change events for application in [`reload_materials`].
 pub fn module_meta_events<M>(
-    mut module_meta_events: EventReader<AssetEvent<ModuleMeta>>,
-    assets: Res<Assets<ModuleMeta>>,
+    mut module_meta_events: EventReader<AssetEvent<crate::prelude::ModuleMeta>>,
+    assets: Res<Assets<crate::prelude::ModuleMeta>>,
     mut changed_shaders: ResMut<ChangedShaders>,
 ) where
     M: RustGpuMaterial,
 {
-    let shader_meta_map = SHADER_META_MAP.read().unwrap();
+    let shader_meta_map = crate::prelude::SHADER_META_MAP.read().unwrap();
 
     for event in module_meta_events.iter() {
         match event {
@@ -89,7 +89,7 @@ pub fn module_meta_events<M>(
                     // Update module meta
                     if let Some(asset) = assets.get(handle) {
                         info!("Updating shader meta for {handle:?}");
-                        SHADER_META
+                        crate::prelude::SHADER_META
                             .write()
                             .unwrap()
                             .insert(shader.clone_weak(), asset.clone());

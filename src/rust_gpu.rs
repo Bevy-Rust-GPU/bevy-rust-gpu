@@ -1,22 +1,22 @@
 //! Wrapper for extending a `Material` with `rust-gpu` shader functionality.
 
-use std::{any::TypeId, marker::PhantomData, sync::RwLock};
+use std::{any::TypeId, marker::PhantomData, path::PathBuf, sync::RwLock};
 
 use bevy::{
     pbr::MaterialPipelineKey,
     prelude::{
         default, info, warn, CoreStage, Image, IntoSystemDescriptor, Material, MaterialPlugin,
-        Plugin,
+        Plugin, Handle, Shader, Deref, DerefMut, Resource,
     },
     reflect::TypeUuid,
     render::render_resource::{AsBindGroup, PreparedBindGroup, ShaderRef},
-    utils::HashMap,
+    utils::{HashMap, HashSet},
 };
 use once_cell::sync::Lazy;
 
 use crate::{
     load_rust_gpu_shader::RustGpuShader,
-    prelude::{EntryPoint, Export, ExportHandle, RustGpuMaterial, SHADER_META},
+    prelude::{EntryPoint, RustGpuMaterial},
     systems::{reload_materials, shader_events},
 };
 
@@ -68,6 +68,10 @@ where
     }
 }
 
+/// A resource to track `rust-gpu` shaders that have been reloaded on a given frame
+#[derive(Debug, Default, Clone, Deref, DerefMut, Resource)]
+pub struct ChangedShaders(pub HashSet<Handle<Shader>>);
+
 /// Type-level RustGpu material settings
 #[derive(Debug, Default, Copy, Clone)]
 pub struct RustGpuSettings {
@@ -86,8 +90,6 @@ where
     pub vertex_shader: Option<RustGpuShader>,
     pub fragment_shader: Option<RustGpuShader>,
     pub iteration: usize,
-    #[cfg(feature = "hot-rebuild")]
-    pub export_handle: Option<ExportHandle>,
 }
 
 impl<M> Clone for RustGpuKey<M>
@@ -101,7 +103,6 @@ where
             vertex_shader: self.vertex_shader.clone(),
             fragment_shader: self.fragment_shader.clone(),
             iteration: self.iteration.clone(),
-            export_handle: self.export_handle.clone(),
         }
     }
 }
@@ -154,10 +155,6 @@ pub struct RustGpu<M> {
 
     /// Current reload iteration, used to drive hot-reloading.
     pub iteration: usize,
-
-    /// If `Some`, active entry points will be reported to this handle.
-    #[cfg(feature = "hot-rebuild")]
-    pub export_handle: Option<ExportHandle>,
 }
 
 impl<M> PartialEq for RustGpu<M>
@@ -237,8 +234,6 @@ where
                     vertex_shader: self.vertex_shader.clone(),
                     fragment_shader: self.fragment_shader.clone(),
                     iteration: self.iteration,
-                    #[cfg(feature = "hot-rebuild")]
-                    export_handle: self.export_handle.clone(),
                 },
             })
     }
@@ -329,7 +324,7 @@ where
 
             #[cfg(feature = "hot-reload")]
             {
-                let metas = SHADER_META.read().unwrap();
+                let metas = crate::prelude::SHADER_META.read().unwrap();
                 if let Some(vertex_meta) = metas.get(&vertex_shader.0) {
                     info!("Vertex meta is valid");
                     info!("Checking entry point {entry_point:}");
@@ -343,15 +338,25 @@ where
             }
 
             #[cfg(feature = "hot-rebuild")]
-            if let Some(sender) = &key.bind_group_data.export_handle {
+            'hot_rebuild: {
+                let exports = crate::prelude::MATERIAL_EXPORTS.read().unwrap();
+                let Some(export) = exports.get(&std::any::TypeId::of::<Self>()) else {
+                    break 'hot_rebuild;
+                };
+
+                let handles = crate::prelude::EXPORT_HANDLES.read().unwrap();
+                let Some(handle) = handles.get(export) else {
+                    break 'hot_rebuild;
+                };
+
                 info!("Entrypoint sender is valid");
-                sender
-                    .send(Export {
+                handle
+                    .send(crate::prelude::Export {
                         shader: M::Vertex::NAME,
                         permutation: M::Vertex::permutation(&shader_defs),
                     })
                     .unwrap();
-            }
+            };
 
             if apply {
                 info!("Applying vertex shader and entry point");
@@ -382,7 +387,7 @@ where
                 #[cfg(feature = "hot-reload")]
                 {
                     info!("Fragment meta is present");
-                    let metas = SHADER_META.read().unwrap();
+                    let metas = crate::prelude::SHADER_META.read().unwrap();
                     if let Some(fragment_meta) = metas.get(&fragment_shader.0) {
                         info!("Fragment meta is valid");
                         info!("Checking entry point {entry_point:}");
@@ -396,14 +401,25 @@ where
                 }
 
                 #[cfg(feature = "hot-rebuild")]
-                if let Some(sender) = &key.bind_group_data.export_handle {
-                    sender
-                        .send(Export {
+                'hot_rebuild: {
+                    let exports = crate::prelude::MATERIAL_EXPORTS.read().unwrap();
+                    let Some(export) = exports.get(&std::any::TypeId::of::<Self>()) else {
+                        break 'hot_rebuild;
+                    };
+
+                    let handles = crate::prelude::EXPORT_HANDLES.read().unwrap();
+                    let Some(handle) = handles.get(export) else {
+                        break 'hot_rebuild;
+                    };
+
+                    info!("Entrypoint sender is valid");
+                    handle
+                        .send(crate::prelude::Export {
                             shader: M::Fragment::NAME,
                             permutation: M::Fragment::permutation(&shader_defs),
                         })
                         .unwrap();
-                }
+                };
 
                 if apply {
                     info!("Applying fragment shader and entry point");
@@ -430,5 +446,11 @@ where
     pub fn map_settings<F: FnOnce(&mut RustGpuSettings)>(f: F) {
         let mut settings = MATERIAL_SETTINGS.write().unwrap();
         f(&mut settings.entry(TypeId::of::<Self>()).or_default());
+    }
+
+    #[cfg(feature = "hot-rebuild")]
+    pub fn export_to<P: Into<PathBuf>>(path: P) {
+        let mut handles = crate::prelude::MATERIAL_EXPORTS.write().unwrap();
+        handles.insert(std::any::TypeId::of::<Self>(), path.into());
     }
 }

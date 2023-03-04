@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     prelude::{reload_materials, RustGpuMaterial},
-    systems::shader_events,
+    systems::shader_events, ChangedShaders,
 };
 
 pub(crate) static SHADER_META: Lazy<RwLock<ShaderMeta>> = Lazy::new(Default::default);
@@ -102,10 +102,6 @@ pub struct ModuleMeta {
     /// Path to corresponding `.spv` file.
     pub module: String,
 }
-
-/// A resource to track `rust-gpu` shaders that have been reloaded on a given frame
-#[derive(Debug, Default, Clone, Deref, DerefMut, Resource)]
-pub struct ChangedShaders(pub HashSet<Handle<Shader>>);
 
 /// Listens for asset events, updates backend data, and triggers material re-specialization
 pub fn module_meta_events<M>(

@@ -17,6 +17,16 @@ use bevy::{
 };
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "hot-rebuild")]
+pub(crate) static EXPORT_HANDLES: once_cell::sync::Lazy<
+    std::sync::RwLock<HashMap<PathBuf, ExportHandle>>,
+> = once_cell::sync::Lazy::new(default);
+
+#[cfg(feature = "hot-rebuild")]
+pub(crate) static MATERIAL_EXPORTS: once_cell::sync::Lazy<
+    std::sync::RwLock<HashMap<std::any::TypeId, PathBuf>>,
+> = once_cell::sync::Lazy::new(default);
+
 /// Handles exporting known `RustGpuMaterial` permutations to a JSON file for static compilation.
 pub struct EntryPointExportPlugin;
 
@@ -25,6 +35,10 @@ impl Plugin for EntryPointExportPlugin {
         app.world.init_non_send_resource::<EntryPointExport>();
 
         app.add_system_to_stage(
+            CoreStage::Update,
+            EntryPointExport::create_export_containers_system,
+        )
+        .add_system_to_stage(
             CoreStage::Last,
             EntryPointExport::receive_entry_points_system,
         )
@@ -59,37 +73,36 @@ struct EntryPoints {
 /// Container for a set of entry points, with MPSC handles and change tracking
 #[derive(Debug)]
 struct EntryPointExportContainer {
-    tx: ExportHandle,
     rx: EntryPointReceiver,
     entry_points: EntryPoints,
     changed: bool,
 }
 
-impl Default for EntryPointExportContainer {
-    fn default() -> Self {
-        let (tx, rx) = std::sync::mpsc::sync_channel::<Export>(32);
-
-        EntryPointExportContainer {
-            tx,
-            rx,
-            entry_points: default(),
-            changed: default(),
-        }
-    }
-}
-
 /// Non-send resource used to register export files and aggregate their entry points.
-#[derive(Debug, Default)]
-pub struct EntryPointExport {
+#[derive(Debug, Default, Deref, DerefMut)]
+struct EntryPointExport {
     exports: HashMap<PathBuf, EntryPointExportContainer>,
 }
 
 impl EntryPointExport {
-    /// Registers a path to which entrypoints will be exported,
-    /// returning a corresponding [`ExportHandle`] that can be passed to a
-    /// [`RustGpu`](crate::rust_gpu::RustGpu) material.
-    pub fn export<T: Into<PathBuf>>(&mut self, path: T) -> ExportHandle {
-        self.exports.entry(path.into()).or_default().tx.clone()
+    /// System used to populate export containers for registered materials
+    pub fn create_export_containers_system(mut exports: NonSendMut<Self>) {
+        let material_exports = MATERIAL_EXPORTS.read().unwrap();
+        for (_, path) in material_exports.iter() {
+            if !exports.contains_key(path) {
+                let (tx, rx) = std::sync::mpsc::sync_channel::<Export>(32);
+
+                EXPORT_HANDLES.write().unwrap().insert(path.clone(), tx);
+
+                let container = EntryPointExportContainer {
+                    rx,
+                    entry_points: default(),
+                    changed: default(),
+                };
+
+                exports.insert(path.clone(), container);
+            }
+        }
     }
 
     /// System used to receive and store entry points sent from materials.
