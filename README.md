@@ -43,6 +43,8 @@ bevy-rust-gpu = { git = "https://github.com/Bevy-Rust-GPU/bevy-rust-gpu", tag = 
 Next, implement a `Material` type to describe your material's bind group layout and pipeline specialization:
 
 ```rust
+#[derive(Debug, Default, Copy, Clone, AsBindGroup, TypeUuid)]
+#[uuid = "786779ff-e3ac-4b36-ae96-f4844f8e3064"]
 struct MyRustGpuMaterial {
     #[uniform(0)]
     color: Vec4,
