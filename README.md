@@ -19,7 +19,7 @@ Features include hot-reloading with metadata-based entrypoint validation, and ho
 
 As such, its use implies all the caveats of the above, plus the following:
 
-* [Using SPIR-V in a bevy `Material` requires a custom `bevy` fork](https://github.com/Bevy-Rust-GPU/bevy-rust-gpu/issues/12)
+* [Using SPIR-V in a bevy `Material` requires a custom fork](https://github.com/Bevy-Rust-GPU/bevy-rust-gpu/issues/12)
 * [Storage buffers are currently unsupported](https://github.com/Bevy-Rust-GPU/bevy-rust-gpu/issues/13)
 
 Beyond that, `bevy-rust-gpu` is also in active development, but has a relatively small user-facing API footprint.
