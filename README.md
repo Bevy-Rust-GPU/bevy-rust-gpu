@@ -25,9 +25,9 @@ Currently this must occur before `RenderPlugin` is added (most often via `Defaul
 
 For each `RustGpuMaterial` implementor, add a `RustGpuMaterialPlugin::<M>` to your app to setup rendering machinery and hot-reload / hot-rebuild support if the respective features are enabled (see below.)
 
-When instantiating `RustGpu` materials, handles to the `Shader` representing your `rust-gpu` SPIR-V will be required.
-These handles should be acquired via the `AssetServer::load_rust_gpu_shader` extension method, which is provided by the `LoadRustGpuShader` trait.
-This will allow the plugin to automatically load the `.spv.json` metadata asset required for hot-reloading support.
+When instantiating `RustGpu` materials, `RustGpuShader` handles will be required.
+These are equivalent to `Handle<Shader>` with some extra hot-reloading machinery,
+and can be acquired via the `AssetServer::load_rust_gpu_shader` extension method provided by the `LoadRustGpuShader` trait.
 
 ## Feature Flags
 

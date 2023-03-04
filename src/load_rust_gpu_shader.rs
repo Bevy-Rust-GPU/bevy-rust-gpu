@@ -1,17 +1,20 @@
 use std::path::PathBuf;
 
-use bevy::prelude::{Shader, Handle, AssetServer};
+use bevy::prelude::{AssetServer, Handle, Shader};
 
 use crate::prelude::SHADER_META_MAP;
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct RustGpuShader(pub(crate) Handle<Shader>);
 
 /// Loads a `Shader` asset,
 /// and optionally its metadata if the corresponding feature flag is enabled.
 pub trait LoadRustGpuShader {
-    fn load_rust_gpu_shader<'a, P: Into<PathBuf>>(&self, path: P) -> Handle<Shader>;
+    fn load_rust_gpu_shader<'a, P: Into<PathBuf>>(&self, path: P) -> RustGpuShader;
 }
 
 impl LoadRustGpuShader for AssetServer {
-    fn load_rust_gpu_shader<'a, P: Into<PathBuf>>(&self, path: P) -> Handle<Shader> {
+    fn load_rust_gpu_shader<'a, P: Into<PathBuf>>(&self, path: P) -> RustGpuShader {
         let path = path.into();
 
         let mut meta_path: PathBuf;
@@ -23,7 +26,6 @@ impl LoadRustGpuShader for AssetServer {
             meta_path.push(last + ".json");
         }
 
-        #[allow(unused_variables)]
         let shader = self.load(path);
 
         #[cfg(feature = "hot-reload")]
@@ -35,7 +37,6 @@ impl LoadRustGpuShader for AssetServer {
             );
         }
 
-        shader
+        RustGpuShader(shader)
     }
 }
-

@@ -5,8 +5,8 @@ use std::{any::TypeId, marker::PhantomData, sync::RwLock};
 use bevy::{
     pbr::MaterialPipelineKey,
     prelude::{
-        default, info, warn, CoreStage, Handle, Image, IntoSystemDescriptor, Material,
-        MaterialPlugin, Plugin, Shader,
+        default, info, warn, CoreStage, Image, IntoSystemDescriptor, Material, MaterialPlugin,
+        Plugin,
     },
     reflect::TypeUuid,
     render::render_resource::{AsBindGroup, PreparedBindGroup, ShaderRef},
@@ -15,6 +15,7 @@ use bevy::{
 use once_cell::sync::Lazy;
 
 use crate::{
+    load_rust_gpu_shader::RustGpuShader,
     prelude::{EntryPoint, Export, ExportHandle, RustGpuMaterial, SHADER_META},
     systems::{reload_materials, shader_events},
 };
@@ -82,8 +83,8 @@ where
     M: AsBindGroup,
 {
     pub base: M::Data,
-    pub vertex_shader: Option<Handle<Shader>>,
-    pub fragment_shader: Option<Handle<Shader>>,
+    pub vertex_shader: Option<RustGpuShader>,
+    pub fragment_shader: Option<RustGpuShader>,
     pub iteration: usize,
     #[cfg(feature = "hot-rebuild")]
     pub export_handle: Option<ExportHandle>,
@@ -146,10 +147,10 @@ pub struct RustGpu<M> {
     pub base: M,
 
     /// If `Some`, overrides [`Material::vertex_shader`] during specialization.
-    pub vertex_shader: Option<Handle<Shader>>,
+    pub vertex_shader: Option<RustGpuShader>,
 
     /// If `Some`, overrides [`Material::fragment_shader`] during specialization.
-    pub fragment_shader: Option<Handle<Shader>>,
+    pub fragment_shader: Option<RustGpuShader>,
 
     /// Current reload iteration, used to drive hot-reloading.
     pub iteration: usize,
@@ -329,7 +330,7 @@ where
             #[cfg(feature = "hot-reload")]
             {
                 let metas = SHADER_META.read().unwrap();
-                if let Some(vertex_meta) = metas.get(&vertex_shader) {
+                if let Some(vertex_meta) = metas.get(&vertex_shader.0) {
                     info!("Vertex meta is valid");
                     info!("Checking entry point {entry_point:}");
                     if !vertex_meta.entry_points.contains(&entry_point) {
@@ -354,7 +355,7 @@ where
 
             if apply {
                 info!("Applying vertex shader and entry point");
-                descriptor.vertex.shader = vertex_shader;
+                descriptor.vertex.shader = vertex_shader.0;
                 descriptor.vertex.entry_point = entry_point.into();
             } else {
                 warn!("Falling back to default vertex shader.");
@@ -382,7 +383,7 @@ where
                 {
                     info!("Fragment meta is present");
                     let metas = SHADER_META.read().unwrap();
-                    if let Some(fragment_meta) = metas.get(&fragment_shader) {
+                    if let Some(fragment_meta) = metas.get(&fragment_shader.0) {
                         info!("Fragment meta is valid");
                         info!("Checking entry point {entry_point:}");
                         if !fragment_meta.entry_points.contains(&entry_point) {
@@ -406,7 +407,7 @@ where
 
                 if apply {
                     info!("Applying fragment shader and entry point");
-                    fragment_descriptor.shader = fragment_shader;
+                    fragment_descriptor.shader = fragment_shader.0;
                     fragment_descriptor.entry_point = entry_point.into();
                 } else {
                     warn!("Falling back to default fragment shader.");

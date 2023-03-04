@@ -48,13 +48,13 @@ pub fn reload_materials<M>(
         let mut reload = false;
 
         if let Some(vertex_shader) = &material.vertex_shader {
-            if changed_shaders.contains(vertex_shader) {
+            if changed_shaders.contains(&vertex_shader.0) {
                 reload = true;
             }
         }
 
         if let Some(fragment_shader) = &material.fragment_shader {
-            if changed_shaders.contains(fragment_shader) {
+            if changed_shaders.contains(&fragment_shader.0) {
                 reload = true;
             }
         }
