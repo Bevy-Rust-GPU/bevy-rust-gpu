@@ -4,13 +4,29 @@
 
 [![Documentation](https://img.shields.io/badge/docs-API-blue)](https://bevy-rust-gpu.github.io/bevy-rust-gpu/bevy_rust_gpu/)
 
-A set of bevy plugins supporting the use of [`rust-gpu`](https://github.com/EmbarkStudios/rust-gpu) shader crates.
+A bevy plugin supporting the use of [`rust-gpu`](https://github.com/EmbarkStudios/rust-gpu) shader crates.
+Part of the [Bevy Rust-GPU](https://github.com/Bevy-Rust-GPU) suite.
 
 Features include hot-reloading with metadata-based entrypoint validation, and hot-recompiling via runtime export of active entrypoints.
 
 ![Hot-rebuild workflow](https://github.com/Bevy-Rust-GPU/bevy-rust-gpu/blob/static-assets/hot-rebuild-workflow.gif?raw=true)
 
 </div>
+
+## Current Status 🚧
+
+`bevy-rust-gpu` relies on [`rust-gpu`](https://github.com/EmbarkStudios/rust-gpu), which is in active development.
+
+As such, its use implies all the caveats of the above, plus the following:
+
+* [Using SPIR-V in a bevy `Material` requires a custom `bevy` fork](https://github.com/Bevy-Rust-GPU/bevy-rust-gpu/issues/12)
+* [Storage buffers are currently unsupported](https://github.com/Bevy-Rust-GPU/bevy-rust-gpu/issues/13)
+
+Beyond that, `bevy-rust-gpu` is also in active development, but has a low user-facing API footprint.
+Major changes will be driven by development in the upstream `bevy` and `rust-gpu` crates.
+
+Currently, none of the [Bevy Rust-GPU](https://github.com/Bevy-Rust-GPU) crates are published on crates.io;
+this may change as and when the major caveats are solved, but in the meantime will be hosted on github and versioned via tag.
 
 ## Usage
 
