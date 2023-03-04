@@ -41,6 +41,9 @@ and uses it to validate entry points at material specialization time.
 This prevents bevy from panicking when an invalid entrypoint is requested, falls back to the default shader,
 and re-specializes the material if it becomes available after a reload.
 
+Note: AssetServer gives up on trying to load an asset if it does not exist,
+so the `.spv` file must be compiled at least once prior to app startup in order to hot-reload successfully.
+
 ### `hot-rebuild`
 
 Adds the `EntryPointExport` resource, which can be used to retrieve an `ExportHandle` corresponding to a JSON output file.
