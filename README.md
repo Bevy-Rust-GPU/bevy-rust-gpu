@@ -50,8 +50,9 @@ struct MyRustGpuMaterial {
     color: Vec4,
 }
 
-// The vertex and fragment shaders specified here can be used as a fallback
-// when entrypoints are unavailable (see the documentation of bevy_rust_gpu::prelude::RustGpuSettings),
+// The vertex and fragment shaders specified here can be used
+// as a fallback when entrypoints are unavailable
+// (see the documentation of bevy_rust_gpu::prelude::RustGpuSettings),
 // but are otherwise deferred to ShaderRef::Default, so can be left unimplemented.
 impl Material for MyRustGpuMaterial {}
 ```
@@ -93,11 +94,17 @@ Next, add `RustGpuPlugin` to your bevy app to configure the backend.
     app.add_plugins(DefaultPlugins);
 ```
 
-For each `RustGpuMaterial` implementor, add a `RustGpuMaterialPlugin::<M>` to your app to setup rendering machinery and hot-reload / hot-rebuild support if the respective features are enabled (see below.)
+For each `RustGpuMaterial` implementor, add a `RustGpuMaterialPlugin::<M>` to your app to setup backend rendering machinery.
+This will also configure hot-reloading and hot-rebuilding if the corresponding features are enabled.
 
 ```rust
     app.add_plugin(RustGpuMaterialPlugin::<MyRustGpuMaterial>::default());
 
+```
+
+If using hot-rebuilding, tell the material where to export its entry points:
+```rust
+    RustGpu::<ExampleMaterial>::export_to(ENTRY_POINTS_PATH);
 ```
 
 Finally, load your shader, and add it to a material:
