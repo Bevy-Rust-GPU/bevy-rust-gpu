@@ -431,6 +431,7 @@
 <a href="#431" id="431">431</a>
 <a href="#432" id="432">432</a>
 <a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Wrapper for extending a `Material` with `rust-gpu` shader functionality.
 
 </span><span class="kw">use </span>std::{any::TypeId, marker::PhantomData, sync::RwLock};
@@ -438,8 +439,8 @@
 <span class="kw">use </span>bevy::{
     pbr::MaterialPipelineKey,
     prelude::{
-        default, info, warn, CoreStage, Handle, Image, IntoSystemDescriptor, Material,
-        MaterialPlugin, Plugin, Shader,
+        default, info, warn, CoreStage, Image, IntoSystemDescriptor, Material, MaterialPlugin,
+        Plugin,
     },
     reflect::TypeUuid,
     render::render_resource::{AsBindGroup, PreparedBindGroup, ShaderRef},
@@ -448,6 +449,7 @@
 <span class="kw">use </span>once_cell::sync::Lazy;
 
 <span class="kw">use crate</span>::{
+    load_rust_gpu_shader::RustGpuShader,
     prelude::{EntryPoint, Export, ExportHandle, RustGpuMaterial, SHADER_META},
     systems::{reload_materials, shader_events},
 };
@@ -515,8 +517,8 @@
     </span>M: AsBindGroup,
 {
     <span class="kw">pub </span>base: M::Data,
-    <span class="kw">pub </span>vertex_shader: <span class="prelude-ty">Option</span>&lt;Handle&lt;Shader&gt;&gt;,
-    <span class="kw">pub </span>fragment_shader: <span class="prelude-ty">Option</span>&lt;Handle&lt;Shader&gt;&gt;,
+    <span class="kw">pub </span>vertex_shader: <span class="prelude-ty">Option</span>&lt;RustGpuShader&gt;,
+    <span class="kw">pub </span>fragment_shader: <span class="prelude-ty">Option</span>&lt;RustGpuShader&gt;,
     <span class="kw">pub </span>iteration: usize,
     <span class="attr">#[cfg(feature = <span class="string">&quot;hot-rebuild&quot;</span>)]
     </span><span class="kw">pub </span>export_handle: <span class="prelude-ty">Option</span>&lt;ExportHandle&gt;,
@@ -579,10 +581,10 @@
     </span><span class="kw">pub </span>base: M,
 
     <span class="doccomment">/// If `Some`, overrides [`Material::vertex_shader`] during specialization.
-    </span><span class="kw">pub </span>vertex_shader: <span class="prelude-ty">Option</span>&lt;Handle&lt;Shader&gt;&gt;,
+    </span><span class="kw">pub </span>vertex_shader: <span class="prelude-ty">Option</span>&lt;RustGpuShader&gt;,
 
     <span class="doccomment">/// If `Some`, overrides [`Material::fragment_shader`] during specialization.
-    </span><span class="kw">pub </span>fragment_shader: <span class="prelude-ty">Option</span>&lt;Handle&lt;Shader&gt;&gt;,
+    </span><span class="kw">pub </span>fragment_shader: <span class="prelude-ty">Option</span>&lt;RustGpuShader&gt;,
 
     <span class="doccomment">/// Current reload iteration, used to drive hot-reloading.
     </span><span class="kw">pub </span>iteration: usize,
@@ -762,7 +764,7 @@
             <span class="attr">#[cfg(feature = <span class="string">&quot;hot-reload&quot;</span>)]
             </span>{
                 <span class="kw">let </span>metas = SHADER_META.read().unwrap();
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(vertex_meta) = metas.get(<span class="kw-2">&amp;</span>vertex_shader) {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(vertex_meta) = metas.get(<span class="kw-2">&amp;</span>vertex_shader.<span class="number">0</span>) {
                     <span class="macro">info!</span>(<span class="string">&quot;Vertex meta is valid&quot;</span>);
                     <span class="macro">info!</span>(<span class="string">&quot;Checking entry point {entry_point:}&quot;</span>);
                     <span class="kw">if </span>!vertex_meta.entry_points.contains(<span class="kw-2">&amp;</span>entry_point) {
@@ -787,7 +789,7 @@
 
             <span class="kw">if </span>apply {
                 <span class="macro">info!</span>(<span class="string">&quot;Applying vertex shader and entry point&quot;</span>);
-                descriptor.vertex.shader = vertex_shader;
+                descriptor.vertex.shader = vertex_shader.<span class="number">0</span>;
                 descriptor.vertex.entry_point = entry_point.into();
             } <span class="kw">else </span>{
                 <span class="macro">warn!</span>(<span class="string">&quot;Falling back to default vertex shader.&quot;</span>);
@@ -815,7 +817,7 @@
                 </span>{
                     <span class="macro">info!</span>(<span class="string">&quot;Fragment meta is present&quot;</span>);
                     <span class="kw">let </span>metas = SHADER_META.read().unwrap();
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(fragment_meta) = metas.get(<span class="kw-2">&amp;</span>fragment_shader) {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(fragment_meta) = metas.get(<span class="kw-2">&amp;</span>fragment_shader.<span class="number">0</span>) {
                         <span class="macro">info!</span>(<span class="string">&quot;Fragment meta is valid&quot;</span>);
                         <span class="macro">info!</span>(<span class="string">&quot;Checking entry point {entry_point:}&quot;</span>);
                         <span class="kw">if </span>!fragment_meta.entry_points.contains(<span class="kw-2">&amp;</span>entry_point) {
@@ -839,7 +841,7 @@
 
                 <span class="kw">if </span>apply {
                     <span class="macro">info!</span>(<span class="string">&quot;Applying fragment shader and entry point&quot;</span>);
-                    fragment_descriptor.shader = fragment_shader;
+                    fragment_descriptor.shader = fragment_shader.<span class="number">0</span>;
                     fragment_descriptor.entry_point = entry_point.into();
                 } <span class="kw">else </span>{
                     <span class="macro">warn!</span>(<span class="string">&quot;Falling back to default fragment shader.&quot;</span>);

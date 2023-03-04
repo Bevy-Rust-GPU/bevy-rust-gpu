@@ -150,13 +150,13 @@
         <span class="kw">let </span><span class="kw-2">mut </span>reload = <span class="bool-val">false</span>;
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(vertex_shader) = <span class="kw-2">&amp;</span>material.vertex_shader {
-            <span class="kw">if </span>changed_shaders.contains(vertex_shader) {
+            <span class="kw">if </span>changed_shaders.contains(<span class="kw-2">&amp;</span>vertex_shader.<span class="number">0</span>) {
                 reload = <span class="bool-val">true</span>;
             }
         }
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(fragment_shader) = <span class="kw-2">&amp;</span>material.fragment_shader {
-            <span class="kw">if </span>changed_shaders.contains(fragment_shader) {
+            <span class="kw">if </span>changed_shaders.contains(<span class="kw-2">&amp;</span>fragment_shader.<span class="number">0</span>) {
                 reload = <span class="bool-val">true</span>;
             }
         }
