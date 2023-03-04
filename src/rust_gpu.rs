@@ -1,6 +1,6 @@
 //! Wrapper for extending a `Material` with `rust-gpu` shader functionality.
 
-use std::marker::PhantomData;
+use std::{any::TypeId, marker::PhantomData, sync::RwLock};
 
 use bevy::{
     pbr::MaterialPipelineKey,
@@ -9,8 +9,10 @@ use bevy::{
         MaterialPlugin, Plugin, Shader,
     },
     reflect::TypeUuid,
-    render::render_resource::{AsBindGroup, PreparedBindGroup},
+    render::render_resource::{AsBindGroup, PreparedBindGroup, ShaderRef},
+    utils::HashMap,
 };
+use once_cell::sync::Lazy;
 
 use crate::{
     prelude::{EntryPoint, Export, ExportHandle, RustGpuMaterial, SHADER_META},
@@ -24,6 +26,8 @@ const SHADER_DEFS: &[&'static str] = &[
     #[cfg(feature = "webgl")]
     "SIXTEEN_BYTE_ALIGNMENT",
 ];
+
+static MATERIAL_SETTINGS: Lazy<RwLock<HashMap<TypeId, RustGpuSettings>>> = Lazy::new(default);
 
 /// Configures backend support for [`RustGpu<M>`].
 pub struct RustGpuMaterialPlugin<M>
@@ -61,6 +65,15 @@ where
         #[cfg(feature = "hot-reload")]
         app.add_plugin(crate::prelude::ShaderMetaPlugin::<M>::default());
     }
+}
+
+/// Type-level RustGpu material settings
+#[derive(Debug, Default, Copy, Clone)]
+pub struct RustGpuSettings {
+    /// If true, use M::vertex as a fallback instead of ShaderRef::default
+    pub fallback_base_vertex: bool,
+    /// If true, use M::fragment as a fallback instead of ShaderRef::default
+    pub fallback_base_fragment: bool,
 }
 
 /// [`RustGpu`] pipeline key.
@@ -241,11 +254,29 @@ where
     M: RustGpuMaterial,
 {
     fn vertex_shader() -> bevy::render::render_resource::ShaderRef {
-        M::vertex_shader()
+        if let Some(true) = MATERIAL_SETTINGS
+            .read()
+            .unwrap()
+            .get(&TypeId::of::<Self>())
+            .map(|settings| settings.fallback_base_vertex)
+        {
+            M::vertex_shader()
+        } else {
+            ShaderRef::Default
+        }
     }
 
     fn fragment_shader() -> bevy::render::render_resource::ShaderRef {
-        M::fragment_shader()
+        if let Some(true) = MATERIAL_SETTINGS
+            .read()
+            .unwrap()
+            .get(&TypeId::of::<Self>())
+            .map(|settings| settings.fallback_base_vertex)
+        {
+            M::fragment_shader()
+        } else {
+            ShaderRef::Default
+        }
     }
 
     fn alpha_mode(&self) -> bevy::prelude::AlphaMode {
@@ -300,10 +331,13 @@ where
                 let metas = SHADER_META.read().unwrap();
                 if let Some(vertex_meta) = metas.get(&vertex_shader) {
                     info!("Vertex meta is valid");
+                    info!("Checking entry point {entry_point:}");
                     if !vertex_meta.entry_points.contains(&entry_point) {
                         warn!("Missing entry point {entry_point:}");
                         apply = false;
                     }
+                } else {
+                    apply = false;
                 }
             }
 
@@ -350,10 +384,13 @@ where
                     let metas = SHADER_META.read().unwrap();
                     if let Some(fragment_meta) = metas.get(&fragment_shader) {
                         info!("Fragment meta is valid");
+                        info!("Checking entry point {entry_point:}");
                         if !fragment_meta.entry_points.contains(&entry_point) {
                             apply = false;
                             warn!("Missing entry point {entry_point:}, falling back to default fragment shader.");
                         }
+                    } else {
+                        apply = false;
                     }
                 }
 
@@ -382,5 +419,15 @@ where
         }
 
         Ok(())
+    }
+}
+
+impl<M> RustGpu<M>
+where
+    M: 'static,
+{
+    pub fn map_settings<F: FnOnce(&mut RustGpuSettings)>(f: F) {
+        let mut settings = MATERIAL_SETTINGS.write().unwrap();
+        f(&mut settings.entry(TypeId::of::<Self>()).or_default());
     }
 }

@@ -16,7 +16,10 @@ use bevy_common_assets::json::JsonAssetPlugin;
 
 use serde::{Deserialize, Serialize};
 
-use crate::prelude::{reload_materials, RustGpuMaterial};
+use crate::{
+    prelude::{reload_materials, RustGpuMaterial},
+    systems::shader_events,
+};
 
 pub(crate) static SHADER_META: Lazy<RwLock<ShaderMeta>> = Lazy::new(Default::default);
 pub(crate) static SHADER_META_MAP: Lazy<RwLock<ShaderMetaMap>> = Lazy::new(Default::default);
@@ -46,7 +49,9 @@ where
 
         app.add_system_to_stage(
             bevy::prelude::CoreStage::Last,
-            module_meta_events::<M>.before(reload_materials::<M>),
+            module_meta_events::<M>
+                .after(shader_events::<M>)
+                .before(reload_materials::<M>),
         );
     }
 }
