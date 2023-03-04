@@ -152,11 +152,12 @@ so the `.spv` file must be compiled at least once prior to app startup in order 
 
 ### `hot-rebuild`
 
-Adds the `EntryPointExport` resource, which can be used to retrieve an `ExportHandle` corresponding to a JSON output file.
-When passed to a `RustGpu` material, active entrypoints to be aggregated and exported to the corresponding file on change.
+Enables hot-rebuilding support.
+
+`RustGpu` gains a new `export_to` function, which will register it to export entry points to the provided path.
 
 This can be used in concert with the `hot-reload` feature, [`rust-gpu-builder`](https://github.com/Bevy-Rust-GPU/rust-gpu-builder)'s file watching functionality,
-and [`permutate-macro`](https://github.com/Bevy-Rust-GPU/permutate-macro)'s static permutation generation to drive a hot-rebuild workflow:
+and [`permutate-macro`](https://github.com/Bevy-Rust-GPU/permutate-macro)'s static permutation generation to drive a hot-rebuild workflow on par with bevy's WGSL user experience:
 
 * The bevy app loads a `RustGpu` material, tries to specialize it, and exports the set of required entry points to `entry_points.json`
 * [`rust-gpu-builder`](https://github.com/Bevy-Rust-GPU/rust-gpu-builder) picks up the change to `entry_points.json` and triggers a recompile
