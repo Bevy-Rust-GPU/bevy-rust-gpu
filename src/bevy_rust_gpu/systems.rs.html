@@ -105,7 +105,7 @@
 </span><span class="kw">use </span>bevy::prelude::{info, AssetEvent, Assets, EventReader, Res, ResMut, Shader};
 
 <span class="kw">use crate</span>::{
-    prelude::{ChangedShaders, ModuleMeta, RustGpuMaterial, SHADER_META, SHADER_META_MAP},
+    prelude::{ChangedShaders, RustGpuMaterial},
     RustGpu,
 };
 
@@ -127,7 +127,7 @@
             } =&gt; {
                 <span class="attr">#[cfg(feature = <span class="string">&quot;hot-reload&quot;</span>)]
                 </span><span class="comment">// Remove meta in case the shader and meta load on different frames
-                </span>SHADER_META.write().unwrap().remove(shader_handle);
+                </span><span class="kw">crate</span>::prelude::SHADER_META.write().unwrap().remove(shader_handle);
 
                 <span class="comment">// Mark this shader for material reloading
                 </span>changed_shaders.insert(shader_handle.clone_weak());
@@ -173,13 +173,13 @@
 </span><span class="doccomment">/// Listens for [`ModuleMeta`] asset events, updates backend data,
 /// and aggregates change events for application in [`reload_materials`].
 </span><span class="kw">pub fn </span>module_meta_events&lt;M&gt;(
-    <span class="kw-2">mut </span>module_meta_events: EventReader&lt;AssetEvent&lt;ModuleMeta&gt;&gt;,
-    assets: Res&lt;Assets&lt;ModuleMeta&gt;&gt;,
+    <span class="kw-2">mut </span>module_meta_events: EventReader&lt;AssetEvent&lt;<span class="kw">crate</span>::prelude::ModuleMeta&gt;&gt;,
+    assets: Res&lt;Assets&lt;<span class="kw">crate</span>::prelude::ModuleMeta&gt;&gt;,
     <span class="kw-2">mut </span>changed_shaders: ResMut&lt;ChangedShaders&gt;,
 ) <span class="kw">where
     </span>M: RustGpuMaterial,
 {
-    <span class="kw">let </span>shader_meta_map = SHADER_META_MAP.read().unwrap();
+    <span class="kw">let </span>shader_meta_map = <span class="kw">crate</span>::prelude::SHADER_META_MAP.read().unwrap();
 
     <span class="kw">for </span>event <span class="kw">in </span>module_meta_events.iter() {
         <span class="kw">match </span>event {
@@ -191,7 +191,7 @@
                     <span class="comment">// Update module meta
                     </span><span class="kw">if let </span><span class="prelude-val">Some</span>(asset) = assets.get(handle) {
                         <span class="macro">info!</span>(<span class="string">&quot;Updating shader meta for {handle:?}&quot;</span>);
-                        SHADER_META
+                        <span class="kw">crate</span>::prelude::SHADER_META
                             .write()
                             .unwrap()
                             .insert(shader.clone_weak(), asset.clone());

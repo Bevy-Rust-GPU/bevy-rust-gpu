@@ -134,10 +134,6 @@
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Adds support for loading `.spv.json` metadata.
 
 </span><span class="kw">use </span>std::{marker::PhantomData, sync::RwLock};
@@ -158,7 +154,7 @@
 
 <span class="kw">use crate</span>::{
     prelude::{reload_materials, RustGpuMaterial},
-    systems::shader_events,
+    systems::shader_events, ChangedShaders,
 };
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">static </span>SHADER_META: Lazy&lt;RwLock&lt;ShaderMeta&gt;&gt; = Lazy::new(Default::default);
@@ -242,10 +238,6 @@
     <span class="doccomment">/// Path to corresponding `.spv` file.
     </span><span class="kw">pub </span>module: String,
 }
-
-<span class="doccomment">/// A resource to track `rust-gpu` shaders that have been reloaded on a given frame
-</span><span class="attr">#[derive(Debug, Default, Clone, Deref, DerefMut, Resource)]
-</span><span class="kw">pub struct </span>ChangedShaders(<span class="kw">pub </span>HashSet&lt;Handle&lt;Shader&gt;&gt;);
 
 <span class="doccomment">/// Listens for asset events, updates backend data, and triggers material re-specialization
 </span><span class="kw">pub fn </span>module_meta_events&lt;M&gt;(

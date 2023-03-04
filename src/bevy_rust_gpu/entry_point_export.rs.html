@@ -137,6 +137,19 @@
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
 <a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Adds support for exporting the active entry point set to a `.json` file.
 //!
 //! This can be used in conjunction with `rust-gpu-builder` and `permutate-macro` to drive hot-recompiles.
@@ -156,6 +169,16 @@
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
+<span class="attr">#[cfg(feature = <span class="string">&quot;hot-rebuild&quot;</span>)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">static </span>EXPORT_HANDLES: once_cell::sync::Lazy&lt;
+    std::sync::RwLock&lt;HashMap&lt;PathBuf, ExportHandle&gt;&gt;,
+&gt; = once_cell::sync::Lazy::new(default);
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;hot-rebuild&quot;</span>)]
+</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">static </span>MATERIAL_EXPORTS: once_cell::sync::Lazy&lt;
+    std::sync::RwLock&lt;HashMap&lt;std::any::TypeId, PathBuf&gt;&gt;,
+&gt; = once_cell::sync::Lazy::new(default);
+
 <span class="doccomment">/// Handles exporting known `RustGpuMaterial` permutations to a JSON file for static compilation.
 </span><span class="kw">pub struct </span>EntryPointExportPlugin;
 
@@ -164,6 +187,10 @@
         app.world.init_non_send_resource::&lt;EntryPointExport&gt;();
 
         app.add_system_to_stage(
+            CoreStage::Update,
+            EntryPointExport::create_export_containers_system,
+        )
+        .add_system_to_stage(
             CoreStage::Last,
             EntryPointExport::receive_entry_points_system,
         )
@@ -198,37 +225,36 @@
 <span class="doccomment">/// Container for a set of entry points, with MPSC handles and change tracking
 </span><span class="attr">#[derive(Debug)]
 </span><span class="kw">struct </span>EntryPointExportContainer {
-    tx: ExportHandle,
     rx: EntryPointReceiver,
     entry_points: EntryPoints,
     changed: bool,
 }
 
-<span class="kw">impl </span>Default <span class="kw">for </span>EntryPointExportContainer {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>(tx, rx) = std::sync::mpsc::sync_channel::&lt;Export&gt;(<span class="number">32</span>);
-
-        EntryPointExportContainer {
-            tx,
-            rx,
-            entry_points: default(),
-            changed: default(),
-        }
-    }
-}
-
 <span class="doccomment">/// Non-send resource used to register export files and aggregate their entry points.
-</span><span class="attr">#[derive(Debug, Default)]
-</span><span class="kw">pub struct </span>EntryPointExport {
+</span><span class="attr">#[derive(Debug, Default, Deref, DerefMut)]
+</span><span class="kw">struct </span>EntryPointExport {
     exports: HashMap&lt;PathBuf, EntryPointExportContainer&gt;,
 }
 
 <span class="kw">impl </span>EntryPointExport {
-    <span class="doccomment">/// Registers a path to which entrypoints will be exported,
-    /// returning a corresponding [`ExportHandle`] that can be passed to a
-    /// [`RustGpu`](crate::rust_gpu::RustGpu) material.
-    </span><span class="kw">pub fn </span>export&lt;T: Into&lt;PathBuf&gt;&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, path: T) -&gt; ExportHandle {
-        <span class="self">self</span>.exports.entry(path.into()).or_default().tx.clone()
+    <span class="doccomment">/// System used to populate export containers for registered materials
+    </span><span class="kw">pub fn </span>create_export_containers_system(<span class="kw-2">mut </span>exports: NonSendMut&lt;<span class="self">Self</span>&gt;) {
+        <span class="kw">let </span>material_exports = MATERIAL_EXPORTS.read().unwrap();
+        <span class="kw">for </span>(<span class="kw">_</span>, path) <span class="kw">in </span>material_exports.iter() {
+            <span class="kw">if </span>!exports.contains_key(path) {
+                <span class="kw">let </span>(tx, rx) = std::sync::mpsc::sync_channel::&lt;Export&gt;(<span class="number">32</span>);
+
+                EXPORT_HANDLES.write().unwrap().insert(path.clone(), tx);
+
+                <span class="kw">let </span>container = EntryPointExportContainer {
+                    rx,
+                    entry_points: default(),
+                    changed: default(),
+                };
+
+                exports.insert(path.clone(), container);
+            }
+        }
     }
 
     <span class="doccomment">/// System used to receive and store entry points sent from materials.
