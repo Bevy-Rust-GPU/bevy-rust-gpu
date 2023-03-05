@@ -308,16 +308,8 @@ where
         if let Some(vertex_shader) = key.bind_group_data.vertex_shader {
             info!("Vertex shader is present, aggregating defs");
 
-            let shader_defs: Vec<_> = descriptor
-                .vertex
-                .shader_defs
-                .iter()
-                .cloned()
-                .chain(SHADER_DEFS.iter().map(ToString::to_string))
-                .collect();
-
             info!("Building vertex entrypoint");
-            let entry_point = M::Vertex::build(&shader_defs);
+            let entry_point = M::Vertex::build(&descriptor.vertex.shader_defs);
 
             #[allow(unused_mut)]
             let mut apply = true;
@@ -353,7 +345,7 @@ where
                 handle
                     .send(crate::prelude::Export {
                         shader: M::Vertex::NAME,
-                        permutation: M::Vertex::permutation(&shader_defs),
+                        permutation: M::Vertex::permutation(&descriptor.vertex.shader_defs),
                     })
                     .unwrap();
             };
@@ -365,21 +357,17 @@ where
             } else {
                 warn!("Falling back to default vertex shader.");
             }
+
+            // Clear shader defs to satify ShaderProcessor
+            descriptor.vertex.shader_defs.clear();
         }
 
         if let Some(fragment_descriptor) = descriptor.fragment.as_mut() {
             if let Some(fragment_shader) = key.bind_group_data.fragment_shader {
                 info!("Fragment shader is present, aggregating defs");
 
-                let shader_defs: Vec<_> = fragment_descriptor
-                    .shader_defs
-                    .iter()
-                    .cloned()
-                    .chain(SHADER_DEFS.iter().map(ToString::to_string))
-                    .collect();
-
                 info!("Building fragment entrypoint");
-                let entry_point = M::Fragment::build(&shader_defs);
+                let entry_point = M::Fragment::build(&fragment_descriptor.shader_defs);
 
                 #[allow(unused_mut)]
                 let mut apply = true;
@@ -416,7 +404,7 @@ where
                     handle
                         .send(crate::prelude::Export {
                             shader: M::Fragment::NAME,
-                            permutation: M::Fragment::permutation(&shader_defs),
+                            permutation: M::Fragment::permutation(&fragment_descriptor.shader_defs),
                         })
                         .unwrap();
                 };
@@ -428,6 +416,9 @@ where
                 } else {
                     warn!("Falling back to default fragment shader.");
                 }
+
+                // Clear shader defs to satify ShaderProcessor
+                fragment_descriptor.shader_defs.clear();
             }
         }
 
