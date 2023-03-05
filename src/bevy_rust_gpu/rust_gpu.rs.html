@@ -445,15 +445,6 @@
 <a href="#445" id="445">445</a>
 <a href="#446" id="446">446</a>
 <a href="#447" id="447">447</a>
-<a href="#448" id="448">448</a>
-<a href="#449" id="449">449</a>
-<a href="#450" id="450">450</a>
-<a href="#451" id="451">451</a>
-<a href="#452" id="452">452</a>
-<a href="#453" id="453">453</a>
-<a href="#454" id="454">454</a>
-<a href="#455" id="455">455</a>
-<a href="#456" id="456">456</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Wrapper for extending a `Material` with `rust-gpu` shader functionality.
 
 </span><span class="kw">use </span>std::{any::TypeId, marker::PhantomData, path::PathBuf, sync::RwLock};
@@ -764,16 +755,8 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(vertex_shader) = key.bind_group_data.vertex_shader {
             <span class="macro">info!</span>(<span class="string">&quot;Vertex shader is present, aggregating defs&quot;</span>);
 
-            <span class="kw">let </span>shader_defs: Vec&lt;<span class="kw">_</span>&gt; = descriptor
-                .vertex
-                .shader_defs
-                .iter()
-                .cloned()
-                .chain(SHADER_DEFS.iter().map(ToString::to_string))
-                .collect();
-
             <span class="macro">info!</span>(<span class="string">&quot;Building vertex entrypoint&quot;</span>);
-            <span class="kw">let </span>entry_point = M::Vertex::build(<span class="kw-2">&amp;</span>shader_defs);
+            <span class="kw">let </span>entry_point = M::Vertex::build(<span class="kw-2">&amp;</span>descriptor.vertex.shader_defs);
 
             <span class="attr">#[allow(unused_mut)]
             </span><span class="kw">let </span><span class="kw-2">mut </span>apply = <span class="bool-val">true</span>;
@@ -809,7 +792,7 @@
                 handle
                     .send(<span class="kw">crate</span>::prelude::Export {
                         shader: M::Vertex::NAME,
-                        permutation: M::Vertex::permutation(<span class="kw-2">&amp;</span>shader_defs),
+                        permutation: M::Vertex::permutation(<span class="kw-2">&amp;</span>descriptor.vertex.shader_defs),
                     })
                     .unwrap();
             };
@@ -821,21 +804,17 @@
             } <span class="kw">else </span>{
                 <span class="macro">warn!</span>(<span class="string">&quot;Falling back to default vertex shader.&quot;</span>);
             }
+
+            <span class="comment">// Clear shader defs to satify ShaderProcessor
+            </span>descriptor.vertex.shader_defs.clear();
         }
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(fragment_descriptor) = descriptor.fragment.as_mut() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(fragment_shader) = key.bind_group_data.fragment_shader {
                 <span class="macro">info!</span>(<span class="string">&quot;Fragment shader is present, aggregating defs&quot;</span>);
 
-                <span class="kw">let </span>shader_defs: Vec&lt;<span class="kw">_</span>&gt; = fragment_descriptor
-                    .shader_defs
-                    .iter()
-                    .cloned()
-                    .chain(SHADER_DEFS.iter().map(ToString::to_string))
-                    .collect();
-
                 <span class="macro">info!</span>(<span class="string">&quot;Building fragment entrypoint&quot;</span>);
-                <span class="kw">let </span>entry_point = M::Fragment::build(<span class="kw-2">&amp;</span>shader_defs);
+                <span class="kw">let </span>entry_point = M::Fragment::build(<span class="kw-2">&amp;</span>fragment_descriptor.shader_defs);
 
                 <span class="attr">#[allow(unused_mut)]
                 </span><span class="kw">let </span><span class="kw-2">mut </span>apply = <span class="bool-val">true</span>;
@@ -872,7 +851,7 @@
                     handle
                         .send(<span class="kw">crate</span>::prelude::Export {
                             shader: M::Fragment::NAME,
-                            permutation: M::Fragment::permutation(<span class="kw-2">&amp;</span>shader_defs),
+                            permutation: M::Fragment::permutation(<span class="kw-2">&amp;</span>fragment_descriptor.shader_defs),
                         })
                         .unwrap();
                 };
@@ -884,6 +863,9 @@
                 } <span class="kw">else </span>{
                     <span class="macro">warn!</span>(<span class="string">&quot;Falling back to default fragment shader.&quot;</span>);
                 }
+
+                <span class="comment">// Clear shader defs to satify ShaderProcessor
+                </span>fragment_descriptor.shader_defs.clear();
             }
         }
 
