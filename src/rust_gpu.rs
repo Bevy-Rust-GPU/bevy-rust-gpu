@@ -343,12 +343,12 @@ where
                 info!("Applying vertex shader and entry point");
                 descriptor.vertex.shader = vertex_shader.0;
                 descriptor.vertex.entry_point = entry_point.into();
+
+                // Clear shader defs to satify ShaderProcessor
+                descriptor.vertex.shader_defs.clear();
             } else {
                 warn!("Falling back to default vertex shader.");
             }
-
-            // Clear shader defs to satify ShaderProcessor
-            descriptor.vertex.shader_defs.clear();
         }
 
         if let Some(fragment_descriptor) = descriptor.fragment.as_mut() {
@@ -402,12 +402,12 @@ where
                     info!("Applying fragment shader and entry point");
                     fragment_descriptor.shader = fragment_shader.0;
                     fragment_descriptor.entry_point = entry_point.into();
+
+                    // Clear shader defs to satify ShaderProcessor
+                    fragment_descriptor.shader_defs.clear();
                 } else {
                     warn!("Falling back to default fragment shader.");
                 }
-
-                // Clear shader defs to satify ShaderProcessor
-                fragment_descriptor.shader_defs.clear();
             }
         }
 
