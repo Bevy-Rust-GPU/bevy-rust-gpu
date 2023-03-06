@@ -142,14 +142,6 @@
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Adds support for exporting the active entry point set to a `.json` file.
 //!
 //! This can be used in conjunction with `rust-gpu-builder` and `permutate-macro` to drive hot-recompiles.
@@ -161,9 +153,7 @@
 };
 
 <span class="kw">use </span>bevy::{
-    prelude::{
-        default, info, CoreStage, Deref, DerefMut, IntoSystemDescriptor, NonSendMut, Plugin,
-    },
+    prelude::{default, info, CoreSet, Deref, DerefMut, IntoSystemConfig, NonSendMut, Plugin},
     tasks::IoTaskPool,
     utils::HashMap,
 };
@@ -186,19 +176,13 @@
     <span class="kw">fn </span>build(<span class="kw-2">&amp;</span><span class="self">self</span>, app: <span class="kw-2">&amp;mut </span>bevy::prelude::App) {
         app.world.init_non_send_resource::&lt;EntryPointExport&gt;();
 
-        app.add_system_to_stage(
-            CoreStage::Update,
-            EntryPointExport::create_export_containers_system,
-        )
-        .add_system_to_stage(
-            CoreStage::Last,
-            EntryPointExport::receive_entry_points_system,
-        )
-        .add_system_to_stage(
-            CoreStage::Last,
+        app.add_systems((
+            EntryPointExport::create_export_containers_system.in_base_set(CoreSet::Update),
+            EntryPointExport::receive_entry_points_system.in_base_set(CoreSet::Last),
             EntryPointExport::export_entry_points_system
+                .in_base_set(CoreSet::Last)
                 .after(EntryPointExport::receive_entry_points_system),
-        );
+        ));
     }
 }
 

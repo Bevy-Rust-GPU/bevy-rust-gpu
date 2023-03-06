@@ -66,9 +66,13 @@
 <a href="#66" id="66">66</a>
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Trait representation of a `rust-gpu` entry point.
 
-/// An entry point name for use with the [`EntryPoint`] trait.
+</span><span class="kw">use </span>bevy::render::render_resource::ShaderDefVal;
+
+<span class="doccomment">/// An entry point name for use with the [`EntryPoint`] trait.
 </span><span class="kw">pub type </span>EntryPointName = <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str;
 
 <span class="doccomment">/// A set of entry compile parameters for use with the [`EntryPoint`] trait.
@@ -98,12 +102,12 @@
     </span><span class="kw">const </span>PARAMETERS: EntryPointParameters;
 
     <span class="doccomment">/// Constructs a permutation set from the provided shader defs
-    </span><span class="kw">fn </span>permutation(shader_defs: <span class="kw-2">&amp;</span>Vec&lt;String&gt;) -&gt; Vec&lt;String&gt; {
+    </span><span class="kw">fn </span>permutation(shader_defs: <span class="kw-2">&amp;</span>Vec&lt;ShaderDefVal&gt;) -&gt; Vec&lt;String&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>permutation = <span class="macro">vec!</span>[];
 
         <span class="kw">for </span>(defined, undefined) <span class="kw">in </span><span class="self">Self</span>::PARAMETERS.iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(mapping) = defined.iter().find_map(|(def, mapping)| {
-                <span class="kw">if </span>shader_defs.contains(<span class="kw-2">&amp;</span>def.to_string()) {
+                <span class="kw">if </span>shader_defs.contains(<span class="kw-2">&amp;</span>ShaderDefVal::Bool(def.to_string(), <span class="bool-val">true</span>)) {
                     <span class="prelude-val">Some</span>(mapping)
                 } <span class="kw">else </span>{
                     <span class="prelude-val">None
@@ -119,7 +123,7 @@
     }
 
     <span class="doccomment">/// Build an entry point name from the provided shader defs
-    </span><span class="kw">fn </span>build(shader_defs: <span class="kw-2">&amp;</span>Vec&lt;String&gt;) -&gt; String {
+    </span><span class="kw">fn </span>build(shader_defs: <span class="kw-2">&amp;</span>Vec&lt;ShaderDefVal&gt;) -&gt; String {
         std::iter::once(<span class="self">Self</span>::NAME.to_string())
             .chain(
                 <span class="self">Self</span>::permutation(shader_defs)

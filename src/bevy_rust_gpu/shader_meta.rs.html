@@ -134,6 +134,7 @@
 <a href="#134" id="134">134</a>
 <a href="#135" id="135">135</a>
 <a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Adds support for loading `.spv.json` metadata.
 
 </span><span class="kw">use </span>std::{marker::PhantomData, sync::RwLock};
@@ -142,11 +143,11 @@
 
 <span class="kw">use </span>bevy::{
     prelude::{
-        default, info, AssetEvent, Assets, Deref, DerefMut, EventReader, Handle,
-        IntoSystemDescriptor, Plugin, Res, ResMut, Resource, Shader,
+        default, info, AssetEvent, Assets, CoreSet, Deref, DerefMut, EventReader, Handle,
+        IntoSystemConfig, Plugin, Res, ResMut, Resource, Shader,
     },
     reflect::TypeUuid,
-    utils::{HashMap, HashSet},
+    utils::HashMap,
 };
 <span class="kw">use </span>bevy_common_assets::json::JsonAssetPlugin;
 
@@ -154,7 +155,8 @@
 
 <span class="kw">use crate</span>::{
     prelude::{reload_materials, RustGpuMaterial},
-    systems::shader_events, ChangedShaders,
+    systems::shader_events,
+    ChangedShaders,
 };
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">static </span>SHADER_META: Lazy&lt;RwLock&lt;ShaderMeta&gt;&gt; = Lazy::new(Default::default);
@@ -183,9 +185,9 @@
             app.add_plugin(JsonAssetPlugin::&lt;ModuleMeta&gt;::new(<span class="kw-2">&amp;</span>[<span class="string">&quot;spv.json&quot;</span>]));
         }
 
-        app.add_system_to_stage(
-            bevy::prelude::CoreStage::Last,
+        app.add_system(
             module_meta_events::&lt;M&gt;
+                .in_base_set(CoreSet::Last)
                 .after(shader_events::&lt;M&gt;)
                 .before(reload_materials::&lt;M&gt;),
         );

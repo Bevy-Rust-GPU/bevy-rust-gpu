@@ -434,17 +434,6 @@
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
 <a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
-<a href="#441" id="441">441</a>
-<a href="#442" id="442">442</a>
-<a href="#443" id="443">443</a>
-<a href="#444" id="444">444</a>
-<a href="#445" id="445">445</a>
-<a href="#446" id="446">446</a>
-<a href="#447" id="447">447</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Wrapper for extending a `Material` with `rust-gpu` shader functionality.
 
 </span><span class="kw">use </span>std::{any::TypeId, marker::PhantomData, path::PathBuf, sync::RwLock};
@@ -452,8 +441,8 @@
 <span class="kw">use </span>bevy::{
     pbr::MaterialPipelineKey,
     prelude::{
-        default, info, warn, CoreStage, Image, IntoSystemDescriptor, Material, MaterialPlugin,
-        Plugin, Handle, Shader, Deref, DerefMut, Resource,
+        default, info, warn, CoreSet, Deref, DerefMut, Handle, Image, IntoSystemConfig, Material,
+        MaterialPlugin, Plugin, Resource, Shader,
     },
     reflect::TypeUuid,
     render::render_resource::{AsBindGroup, PreparedBindGroup, ShaderRef},
@@ -466,14 +455,6 @@
     prelude::{EntryPoint, RustGpuMaterial},
     systems::{reload_materials, shader_events},
 };
-
-<span class="kw">const </span>SHADER_DEFS: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str] = <span class="kw-2">&amp;</span>[
-    <span class="string">&quot;NO_STORAGE_BUFFERS_SUPPORT&quot;</span>,
-    <span class="attr">#[cfg(feature = <span class="string">&quot;webgl&quot;</span>)]
-    </span><span class="string">&quot;NO_TEXTURE_ARRAYS_SUPPORT&quot;</span>,
-    <span class="attr">#[cfg(feature = <span class="string">&quot;webgl&quot;</span>)]
-    </span><span class="string">&quot;SIXTEEN_BYTE_ALIGNMENT&quot;</span>,
-];
 
 <span class="kw">static </span>MATERIAL_SETTINGS: Lazy&lt;RwLock&lt;HashMap&lt;TypeId, RustGpuSettings&gt;&gt;&gt; = Lazy::new(default);
 
@@ -502,11 +483,8 @@
     M::Data: Clone + Eq + std::hash::Hash,
 {
     <span class="kw">fn </span>build(<span class="kw-2">&amp;</span><span class="self">self</span>, app: <span class="kw-2">&amp;mut </span>bevy::prelude::App) {
-        app.add_system_to_stage(CoreStage::Last, reload_materials::&lt;M&gt;);
-        app.add_system_to_stage(
-            CoreStage::Last,
-            shader_events::&lt;M&gt;.before(reload_materials::&lt;M&gt;),
-        );
+        app.add_system(reload_materials::&lt;M&gt;.in_base_set(CoreSet::Last));
+        app.add_system(shader_events::&lt;M&gt;.before(reload_materials::&lt;M&gt;));
 
         app.add_plugin(MaterialPlugin::&lt;RustGpu&lt;M&gt;&gt;::default());
 
@@ -668,7 +646,7 @@
         images: <span class="kw-2">&amp;</span>bevy::render::render_asset::RenderAssets&lt;Image&gt;,
         fallback_image: <span class="kw-2">&amp;</span>bevy::render::texture::FallbackImage,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;
-        bevy::render::render_resource::PreparedBindGroup&lt;<span class="self">Self</span>&gt;,
+        bevy::render::render_resource::PreparedBindGroup&lt;<span class="self">Self</span>::Data&gt;,
         bevy::render::render_resource::AsBindGroupError,
     &gt; {
         <span class="self">self</span>.base
