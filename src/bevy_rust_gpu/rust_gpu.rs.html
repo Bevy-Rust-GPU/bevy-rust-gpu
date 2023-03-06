@@ -779,12 +779,12 @@
                 <span class="macro">info!</span>(<span class="string">&quot;Applying vertex shader and entry point&quot;</span>);
                 descriptor.vertex.shader = vertex_shader.<span class="number">0</span>;
                 descriptor.vertex.entry_point = entry_point.into();
+
+                <span class="comment">// Clear shader defs to satify ShaderProcessor
+                </span>descriptor.vertex.shader_defs.clear();
             } <span class="kw">else </span>{
                 <span class="macro">warn!</span>(<span class="string">&quot;Falling back to default vertex shader.&quot;</span>);
             }
-
-            <span class="comment">// Clear shader defs to satify ShaderProcessor
-            </span>descriptor.vertex.shader_defs.clear();
         }
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(fragment_descriptor) = descriptor.fragment.as_mut() {
@@ -838,12 +838,12 @@
                     <span class="macro">info!</span>(<span class="string">&quot;Applying fragment shader and entry point&quot;</span>);
                     fragment_descriptor.shader = fragment_shader.<span class="number">0</span>;
                     fragment_descriptor.entry_point = entry_point.into();
+
+                    <span class="comment">// Clear shader defs to satify ShaderProcessor
+                    </span>fragment_descriptor.shader_defs.clear();
                 } <span class="kw">else </span>{
                     <span class="macro">warn!</span>(<span class="string">&quot;Falling back to default fragment shader.&quot;</span>);
                 }
-
-                <span class="comment">// Clear shader defs to satify ShaderProcessor
-                </span>fragment_descriptor.shader_defs.clear();
             }
         }
 
