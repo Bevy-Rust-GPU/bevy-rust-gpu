@@ -9,9 +9,7 @@ use std::{
 };
 
 use bevy::{
-    prelude::{
-        default, info, CoreStage, Deref, DerefMut, IntoSystemDescriptor, NonSendMut, Plugin,
-    },
+    prelude::{default, info, CoreSet, Deref, DerefMut, IntoSystemConfig, NonSendMut, Plugin},
     tasks::IoTaskPool,
     utils::HashMap,
 };
@@ -34,19 +32,13 @@ impl Plugin for EntryPointExportPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.world.init_non_send_resource::<EntryPointExport>();
 
-        app.add_system_to_stage(
-            CoreStage::Update,
-            EntryPointExport::create_export_containers_system,
-        )
-        .add_system_to_stage(
-            CoreStage::Last,
-            EntryPointExport::receive_entry_points_system,
-        )
-        .add_system_to_stage(
-            CoreStage::Last,
+        app.add_systems((
+            EntryPointExport::create_export_containers_system.in_base_set(CoreSet::Update),
+            EntryPointExport::receive_entry_points_system.in_base_set(CoreSet::Last),
             EntryPointExport::export_entry_points_system
+                .in_base_set(CoreSet::Last)
                 .after(EntryPointExport::receive_entry_points_system),
-        );
+        ));
     }
 }
 

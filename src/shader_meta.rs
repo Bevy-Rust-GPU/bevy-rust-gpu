@@ -6,11 +6,11 @@ use once_cell::sync::Lazy;
 
 use bevy::{
     prelude::{
-        default, info, AssetEvent, Assets, Deref, DerefMut, EventReader, Handle,
-        IntoSystemDescriptor, Plugin, Res, ResMut, Resource, Shader,
+        default, info, AssetEvent, Assets, CoreSet, Deref, DerefMut, EventReader, Handle,
+        IntoSystemConfig, Plugin, Res, ResMut, Resource, Shader,
     },
     reflect::TypeUuid,
-    utils::{HashMap, HashSet},
+    utils::HashMap,
 };
 use bevy_common_assets::json::JsonAssetPlugin;
 
@@ -18,7 +18,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     prelude::{reload_materials, RustGpuMaterial},
-    systems::shader_events, ChangedShaders,
+    systems::shader_events,
+    ChangedShaders,
 };
 
 pub(crate) static SHADER_META: Lazy<RwLock<ShaderMeta>> = Lazy::new(Default::default);
@@ -47,9 +48,9 @@ where
             app.add_plugin(JsonAssetPlugin::<ModuleMeta>::new(&["spv.json"]));
         }
 
-        app.add_system_to_stage(
-            bevy::prelude::CoreStage::Last,
+        app.add_system(
             module_meta_events::<M>
+                .in_base_set(CoreSet::Last)
                 .after(shader_events::<M>)
                 .before(reload_materials::<M>),
         );

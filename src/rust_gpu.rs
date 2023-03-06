@@ -5,8 +5,8 @@ use std::{any::TypeId, marker::PhantomData, path::PathBuf, sync::RwLock};
 use bevy::{
     pbr::MaterialPipelineKey,
     prelude::{
-        default, info, warn, CoreStage, Image, IntoSystemDescriptor, Material, MaterialPlugin,
-        Plugin, Handle, Shader, Deref, DerefMut, Resource,
+        default, info, warn, CoreSet, Deref, DerefMut, Handle, Image, IntoSystemConfig, Material,
+        MaterialPlugin, Plugin, Resource, Shader,
     },
     reflect::TypeUuid,
     render::render_resource::{AsBindGroup, PreparedBindGroup, ShaderRef},
@@ -19,14 +19,6 @@ use crate::{
     prelude::{EntryPoint, RustGpuMaterial},
     systems::{reload_materials, shader_events},
 };
-
-const SHADER_DEFS: &[&'static str] = &[
-    "NO_STORAGE_BUFFERS_SUPPORT",
-    #[cfg(feature = "webgl")]
-    "NO_TEXTURE_ARRAYS_SUPPORT",
-    #[cfg(feature = "webgl")]
-    "SIXTEEN_BYTE_ALIGNMENT",
-];
 
 static MATERIAL_SETTINGS: Lazy<RwLock<HashMap<TypeId, RustGpuSettings>>> = Lazy::new(default);
 
@@ -55,11 +47,8 @@ where
     M::Data: Clone + Eq + std::hash::Hash,
 {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_system_to_stage(CoreStage::Last, reload_materials::<M>);
-        app.add_system_to_stage(
-            CoreStage::Last,
-            shader_events::<M>.before(reload_materials::<M>),
-        );
+        app.add_system(reload_materials::<M>.in_base_set(CoreSet::Last));
+        app.add_system(shader_events::<M>.before(reload_materials::<M>));
 
         app.add_plugin(MaterialPlugin::<RustGpu<M>>::default());
 
@@ -221,7 +210,7 @@ where
         images: &bevy::render::render_asset::RenderAssets<Image>,
         fallback_image: &bevy::render::texture::FallbackImage,
     ) -> Result<
-        bevy::render::render_resource::PreparedBindGroup<Self>,
+        bevy::render::render_resource::PreparedBindGroup<Self::Data>,
         bevy::render::render_resource::AsBindGroupError,
     > {
         self.base

@@ -1,5 +1,7 @@
 //! Trait representation of a `rust-gpu` entry point.
 
+use bevy::render::render_resource::ShaderDefVal;
+
 /// An entry point name for use with the [`EntryPoint`] trait.
 pub type EntryPointName = &'static str;
 
@@ -30,12 +32,12 @@ pub trait EntryPoint: 'static + Send + Sync {
     const PARAMETERS: EntryPointParameters;
 
     /// Constructs a permutation set from the provided shader defs
-    fn permutation(shader_defs: &Vec<String>) -> Vec<String> {
+    fn permutation(shader_defs: &Vec<ShaderDefVal>) -> Vec<String> {
         let mut permutation = vec![];
 
         for (defined, undefined) in Self::PARAMETERS.iter() {
             if let Some(mapping) = defined.iter().find_map(|(def, mapping)| {
-                if shader_defs.contains(&def.to_string()) {
+                if shader_defs.contains(&ShaderDefVal::Bool(def.to_string(), true)) {
                     Some(mapping)
                 } else {
                     None
@@ -51,7 +53,7 @@ pub trait EntryPoint: 'static + Send + Sync {
     }
 
     /// Build an entry point name from the provided shader defs
-    fn build(shader_defs: &Vec<String>) -> String {
+    fn build(shader_defs: &Vec<ShaderDefVal>) -> String {
         std::iter::once(Self::NAME.to_string())
             .chain(
                 Self::permutation(shader_defs)
