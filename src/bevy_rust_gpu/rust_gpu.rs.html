@@ -733,8 +733,8 @@
         <span class="kw">if let </span><span class="prelude-val">Some</span>(vertex_shader) = key.bind_group_data.vertex_shader {
             <span class="macro">info!</span>(<span class="string">&quot;Vertex shader is present, aggregating defs&quot;</span>);
 
-            <span class="macro">info!</span>(<span class="string">&quot;Building vertex entrypoint&quot;</span>);
             <span class="kw">let </span>entry_point = M::Vertex::build(<span class="kw-2">&amp;</span>descriptor.vertex.shader_defs);
+            <span class="macro">info!</span>(<span class="string">&quot;Built vertex entrypoint {entry_point:}&quot;</span>);
 
             <span class="attr">#[allow(unused_mut)]
             </span><span class="kw">let </span><span class="kw-2">mut </span>apply = <span class="bool-val">true</span>;
@@ -791,8 +791,8 @@
             <span class="kw">if let </span><span class="prelude-val">Some</span>(fragment_shader) = key.bind_group_data.fragment_shader {
                 <span class="macro">info!</span>(<span class="string">&quot;Fragment shader is present, aggregating defs&quot;</span>);
 
-                <span class="macro">info!</span>(<span class="string">&quot;Building fragment entrypoint&quot;</span>);
                 <span class="kw">let </span>entry_point = M::Fragment::build(<span class="kw-2">&amp;</span>fragment_descriptor.shader_defs);
+                <span class="macro">info!</span>(<span class="string">&quot;Built fragment entrypoint {entry_point:}&quot;</span>);
 
                 <span class="attr">#[allow(unused_mut)]
                 </span><span class="kw">let </span><span class="kw-2">mut </span>apply = <span class="bool-val">true</span>;
