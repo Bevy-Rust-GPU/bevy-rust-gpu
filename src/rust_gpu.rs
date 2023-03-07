@@ -297,8 +297,8 @@ where
         if let Some(vertex_shader) = key.bind_group_data.vertex_shader {
             info!("Vertex shader is present, aggregating defs");
 
-            info!("Building vertex entrypoint");
             let entry_point = M::Vertex::build(&descriptor.vertex.shader_defs);
+            info!("Built vertex entrypoint {entry_point:}");
 
             #[allow(unused_mut)]
             let mut apply = true;
@@ -355,8 +355,8 @@ where
             if let Some(fragment_shader) = key.bind_group_data.fragment_shader {
                 info!("Fragment shader is present, aggregating defs");
 
-                info!("Building fragment entrypoint");
                 let entry_point = M::Fragment::build(&fragment_descriptor.shader_defs);
+                info!("Built fragment entrypoint {entry_point:}");
 
                 #[allow(unused_mut)]
                 let mut apply = true;
