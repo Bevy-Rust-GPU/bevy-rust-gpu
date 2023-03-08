@@ -142,6 +142,48 @@
 <a href="#142" id="142">142</a>
 <a href="#143" id="143">143</a>
 <a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Adds support for exporting the active entry point set to a `.json` file.
 //!
 //! This can be used in conjunction with `rust-gpu-builder` and `permutate-macro` to drive hot-recompiles.
@@ -154,6 +196,7 @@
 
 <span class="kw">use </span>bevy::{
     prelude::{default, info, CoreSet, Deref, DerefMut, IntoSystemConfig, NonSendMut, Plugin},
+    render::render_resource::ShaderDefVal,
     tasks::IoTaskPool,
     utils::HashMap,
 };
@@ -197,13 +240,49 @@
 </span><span class="kw">pub struct </span>Export {
     <span class="kw">pub </span>shader: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str,
     <span class="kw">pub </span>permutation: Vec&lt;String&gt;,
+    <span class="kw">pub </span>constants: Vec&lt;ShaderDefVal&gt;,
+}
+
+<span class="attr">#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(untagged)]
+</span><span class="kw">enum </span>PermutationConstant {
+    Bool(bool),
+    Uint(u32),
+    Int(i32),
+}
+
+<span class="attr">#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, Deref, DerefMut)]
+</span><span class="kw">struct </span>PermutationConstants {
+    <span class="attr">#[serde(flatten)]
+    </span>constants: HashMap&lt;String, PermutationConstant&gt;,
+}
+
+<span class="kw">impl </span>From&lt;Vec&lt;ShaderDefVal&gt;&gt; <span class="kw">for </span>PermutationConstants {
+    <span class="kw">fn </span>from(value: Vec&lt;ShaderDefVal&gt;) -&gt; <span class="self">Self </span>{
+        PermutationConstants {
+            constants: value
+                .into_iter()
+                .map(|def| <span class="kw">match </span>def {
+                    ShaderDefVal::Bool(key, value) =&gt; (key, PermutationConstant::Bool(value)),
+                    ShaderDefVal::Int(key, value) =&gt; (key, PermutationConstant::Int(value)),
+                    ShaderDefVal::UInt(key, value) =&gt; (key, PermutationConstant::Uint(value)),
+                })
+                .collect(),
+        }
+    }
+}
+
+<span class="attr">#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+</span><span class="kw">struct </span>Permutation {
+    parameters: Vec&lt;String&gt;,
+    constants: PermutationConstants,
 }
 
 <span class="doccomment">/// Serializable container for a single entry point
 </span><span class="attr">#[derive(Debug, Default, Clone, Deref, DerefMut, Serialize, Deserialize)]
 </span><span class="kw">struct </span>EntryPoints {
     <span class="attr">#[serde(flatten)]
-    </span>entry_points: HashMap&lt;String, Vec&lt;Vec&lt;String&gt;&gt;&gt;,
+    </span>entry_points: HashMap&lt;String, Vec&lt;Permutation&gt;&gt;,
 }
 
 <span class="doccomment">/// Container for a set of entry points, with MPSC handles and change tracking
@@ -254,13 +333,18 @@
                 }
 
                 <span class="kw">let </span>entry = <span class="kw-2">&amp;</span>export.entry_points[entry_point.shader];
-                <span class="kw">if </span>!entry.contains(<span class="kw-2">&amp;</span>entry_point.permutation) {
-                    <span class="macro">info!</span>(<span class="string">&quot;New permutation: {:?}&quot;</span>, entry_point.permutation);
+                <span class="kw">let </span>permutation = Permutation {
+                    parameters: entry_point.permutation,
+                    constants: entry_point.constants.into(),
+                };
+
+                <span class="kw">if </span>!entry.contains(<span class="kw-2">&amp;</span>permutation) {
+                    <span class="macro">info!</span>(<span class="string">&quot;New permutation: {:?}&quot;</span>, permutation);
                     export
                         .entry_points
                         .get_mut(entry_point.shader)
                         .unwrap()
-                        .push(entry_point.permutation);
+                        .push(permutation);
                     export.changed = <span class="bool-val">true</span>;
                 }
             }

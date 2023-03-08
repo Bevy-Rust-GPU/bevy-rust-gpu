@@ -98,11 +98,32 @@
 <a href="#98" id="98">98</a>
 <a href="#99" id="99">99</a>
 <a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
 </pre><pre class="rust"><code><span class="doccomment">//! `bevy-pbr-rust`-backed `RustGpuMaterial` implementation for `StandardMaterial`.
 
 </span><span class="kw">use </span>bevy::{prelude::StandardMaterial, render::render_resource::ShaderDefVal};
 
-<span class="kw">use </span><span class="kw">crate</span>::prelude::{EntryPoint, EntryPointName, EntryPointParameters, RustGpuMaterial};
+<span class="kw">use crate</span>::{
+    prelude::{EntryPoint, EntryPointName, EntryPointParameters, RustGpuMaterial},
+    EntryPointConstants,
+};
 
 <span class="doccomment">/// `bevy_rust_gpu::mesh::entry_points::vertex`
 </span><span class="kw">pub enum </span>MeshVertex {}
@@ -114,6 +135,7 @@
         (<span class="kw-2">&amp;</span>[(<span class="string">&quot;VERTEX_COLORS&quot;</span>, <span class="string">&quot;some&quot;</span>)], <span class="string">&quot;none&quot;</span>),
         (<span class="kw-2">&amp;</span>[(<span class="string">&quot;SKINNED&quot;</span>, <span class="string">&quot;some&quot;</span>)], <span class="string">&quot;none&quot;</span>),
     ];
+    <span class="kw">const </span>CONSTANTS: EntryPointConstants = <span class="kw-2">&amp;</span>[];
 }
 
 <span class="doccomment">/// `bevy_rust_gpu::mesh::entry_points::fragment`
@@ -122,6 +144,7 @@
 <span class="kw">impl </span>EntryPoint <span class="kw">for </span>MeshFragment {
     <span class="kw">const </span>NAME: EntryPointName = <span class="string">&quot;mesh::entry_points::fragment&quot;</span>;
     <span class="kw">const </span>PARAMETERS: EntryPointParameters = <span class="kw-2">&amp;</span>[];
+    <span class="kw">const </span>CONSTANTS: EntryPointConstants = <span class="kw-2">&amp;</span>[];
 }
 
 <span class="doccomment">/// `bevy_rust_gpu::pbr::entry_points::fragment`
@@ -137,8 +160,16 @@
         (<span class="kw-2">&amp;</span>[(<span class="string">&quot;STANDARDMATERIAL_NORMAL_MAP&quot;</span>, <span class="string">&quot;some&quot;</span>)], <span class="string">&quot;none&quot;</span>),
         (<span class="kw-2">&amp;</span>[(<span class="string">&quot;SKINNED&quot;</span>, <span class="string">&quot;some&quot;</span>)], <span class="string">&quot;none&quot;</span>),
         (<span class="kw-2">&amp;</span>[(<span class="string">&quot;TONEMAP_IN_SHADER&quot;</span>, <span class="string">&quot;some&quot;</span>)], <span class="string">&quot;none&quot;</span>),
-        (<span class="kw-2">&amp;</span>[(<span class="string">&quot;PREMULTIPLY_ALPHA&quot;</span>, <span class="string">&quot;some&quot;</span>)], <span class="string">&quot;none&quot;</span>),
         (<span class="kw-2">&amp;</span>[(<span class="string">&quot;DEBAND_DITHER&quot;</span>, <span class="string">&quot;some&quot;</span>)], <span class="string">&quot;none&quot;</span>),
+        (
+            <span class="kw-2">&amp;</span>[
+                (<span class="string">&quot;BLEND_MULTIPLY&quot;</span>, <span class="string">&quot;multiply&quot;</span>),
+                (<span class="string">&quot;BLEND_PREMULTIPLIED_ALPHA&quot;</span>, <span class="string">&quot;blend_premultiplied_alpha&quot;</span>),
+            ],
+            <span class="string">&quot;none&quot;</span>,
+        ),
+        (<span class="kw-2">&amp;</span>[(<span class="string">&quot;ENVIRONMENT_MAP&quot;</span>, <span class="string">&quot;some&quot;</span>)], <span class="string">&quot;none&quot;</span>),
+        (<span class="kw-2">&amp;</span>[(<span class="string">&quot;PREMULTIPLY_ALPHA&quot;</span>, <span class="string">&quot;some&quot;</span>)], <span class="string">&quot;none&quot;</span>),
         (
             <span class="kw-2">&amp;</span>[
                 (<span class="string">&quot;CLUSTERED_FORWARD_DEBUG_Z_SLICES&quot;</span>, <span class="string">&quot;debug_z_slices&quot;</span>),
@@ -153,7 +184,12 @@
             ],
             <span class="string">&quot;none&quot;</span>,
         ),
+        (
+            <span class="kw-2">&amp;</span>[(<span class="string">&quot;DIRECTIONAL_LIGHT_SHADOW_MAP_DEBUG_CASCADES&quot;</span>, <span class="string">&quot;some&quot;</span>)],
+            <span class="string">&quot;none&quot;</span>,
+        ),
     ];
+    <span class="kw">const </span>CONSTANTS: EntryPointConstants = <span class="kw-2">&amp;</span>[<span class="string">&quot;MAX_DIRECTIONAL_LIGHTS&quot;</span>, <span class="string">&quot;MAX_CASCADES_PER_LIGHT&quot;</span>];
 
     <span class="kw">fn </span>permutation(shader_defs: <span class="kw-2">&amp;</span>Vec&lt;ShaderDefVal&gt;) -&gt; Vec&lt;String&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>permutation = <span class="macro">vec!</span>[];

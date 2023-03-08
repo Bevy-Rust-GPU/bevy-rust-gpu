@@ -434,6 +434,12 @@
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
 <a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Wrapper for extending a `Material` with `rust-gpu` shader functionality.
 
 </span><span class="kw">use </span>std::{any::TypeId, marker::PhantomData, path::PathBuf, sync::RwLock};
@@ -483,8 +489,12 @@
     M::Data: Clone + Eq + std::hash::Hash,
 {
     <span class="kw">fn </span>build(<span class="kw-2">&amp;</span><span class="self">self</span>, app: <span class="kw-2">&amp;mut </span>bevy::prelude::App) {
-        app.add_system(reload_materials::&lt;M&gt;.in_base_set(CoreSet::Last));
-        app.add_system(shader_events::&lt;M&gt;.before(reload_materials::&lt;M&gt;));
+        app.add_system(reload_materials::&lt;M&gt;.in_base_set(CoreSet::PreUpdate));
+        app.add_system(
+            shader_events::&lt;M&gt;
+                .in_base_set(CoreSet::PreUpdate)
+                .before(reload_materials::&lt;M&gt;),
+        );
 
         app.add_plugin(MaterialPlugin::&lt;RustGpu&lt;M&gt;&gt;::default());
 
@@ -771,6 +781,7 @@
                     .send(<span class="kw">crate</span>::prelude::Export {
                         shader: M::Vertex::NAME,
                         permutation: M::Vertex::permutation(<span class="kw-2">&amp;</span>descriptor.vertex.shader_defs),
+                        constants: M::Vertex::constants(<span class="kw-2">&amp;</span>descriptor.vertex.shader_defs),
                     })
                     .unwrap();
             };
@@ -830,6 +841,7 @@
                         .send(<span class="kw">crate</span>::prelude::Export {
                             shader: M::Fragment::NAME,
                             permutation: M::Fragment::permutation(<span class="kw-2">&amp;</span>fragment_descriptor.shader_defs),
+                            constants: M::Fragment::constants(<span class="kw-2">&amp;</span>fragment_descriptor.shader_defs),
                         })
                         .unwrap();
                 };

@@ -187,7 +187,7 @@
 
         app.add_system(
             module_meta_events::&lt;M&gt;
-                .in_base_set(CoreSet::Last)
+                .in_base_set(CoreSet::PreUpdate)
                 .after(shader_events::&lt;M&gt;)
                 .before(reload_materials::&lt;M&gt;),
         );
