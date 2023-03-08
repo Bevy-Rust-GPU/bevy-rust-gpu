@@ -37,7 +37,7 @@ First, add `bevy-rust-gpu` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-bevy-rust-gpu = { git = "https://github.com/Bevy-Rust-GPU/bevy-rust-gpu", tag = "v0.3.0" }
+bevy-rust-gpu = { git = "https://github.com/Bevy-Rust-GPU/bevy-rust-gpu", tag = "v0.4.0" }
 ```
 
 Next, implement a `Material` type to describe your material's bind group layout and pipeline specialization:
