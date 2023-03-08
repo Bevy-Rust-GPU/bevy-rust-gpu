@@ -67,6 +67,7 @@ pub enum MyVertex {}
 impl EntryPoint for MyVertex {
     const NAME: EntryPointName = "vertex";
     const PARAMETERS: EntryPointParameters = &[];
+    const CONSTANTS: EntryPointConstants = &[];
 }
 
 pub enum MyFragment {}
@@ -74,6 +75,7 @@ pub enum MyFragment {}
 impl EntryPoint for MyFragment {
     const NAME: EntryPointName = "fragment";
     const PARAMETERS: EntryPointParameters = &[];
+    const CONSTANTS: EntryPointConstants = &[];
 }
 
 // Then, impl RustGpuMaterial for our material to tie them together
@@ -90,8 +92,20 @@ Next, add `RustGpuPlugin` to your bevy app to configure the backend.
 
 ```rust
     let mut app = App::default();
-    app.add_plugin(RustGpuPlugin); // Must be before RenderPlugin, i.e. before DefaultPlugins
-    app.add_plugins(DefaultPlugins);
+
+    // Add default plugins
+    app.add_plugins(
+        DefaultPlugins
+            .set(
+                // Configure the render plugin with RustGpuPlugin's recommended WgpuSettings
+                RenderPlugin {
+                    wgpu_settings: RustGpuPlugin::wgpu_settings(),
+                },
+            ),
+    );
+
+    // Add the Rust-GPU plugin
+    app.add_plugin(RustGpuPlugin);
 ```
 
 For each `RustGpuMaterial` implementor, add a `RustGpuMaterialPlugin::<M>` to your app to setup backend rendering machinery.
