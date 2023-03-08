@@ -10,6 +10,7 @@ use std::{
 
 use bevy::{
     prelude::{default, info, CoreSet, Deref, DerefMut, IntoSystemConfig, NonSendMut, Plugin},
+    render::render_resource::ShaderDefVal,
     tasks::IoTaskPool,
     utils::HashMap,
 };
@@ -53,13 +54,49 @@ type EntryPointReceiver = Receiver<Export>;
 pub struct Export {
     pub shader: &'static str,
     pub permutation: Vec<String>,
+    pub constants: Vec<ShaderDefVal>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(untagged)]
+enum PermutationConstant {
+    Bool(bool),
+    Uint(u32),
+    Int(i32),
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, Deref, DerefMut)]
+struct PermutationConstants {
+    #[serde(flatten)]
+    constants: HashMap<String, PermutationConstant>,
+}
+
+impl From<Vec<ShaderDefVal>> for PermutationConstants {
+    fn from(value: Vec<ShaderDefVal>) -> Self {
+        PermutationConstants {
+            constants: value
+                .into_iter()
+                .map(|def| match def {
+                    ShaderDefVal::Bool(key, value) => (key, PermutationConstant::Bool(value)),
+                    ShaderDefVal::Int(key, value) => (key, PermutationConstant::Int(value)),
+                    ShaderDefVal::UInt(key, value) => (key, PermutationConstant::Uint(value)),
+                })
+                .collect(),
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct Permutation {
+    parameters: Vec<String>,
+    constants: PermutationConstants,
 }
 
 /// Serializable container for a single entry point
 #[derive(Debug, Default, Clone, Deref, DerefMut, Serialize, Deserialize)]
 struct EntryPoints {
     #[serde(flatten)]
-    entry_points: HashMap<String, Vec<Vec<String>>>,
+    entry_points: HashMap<String, Vec<Permutation>>,
 }
 
 /// Container for a set of entry points, with MPSC handles and change tracking
@@ -110,13 +147,18 @@ impl EntryPointExport {
                 }
 
                 let entry = &export.entry_points[entry_point.shader];
-                if !entry.contains(&entry_point.permutation) {
-                    info!("New permutation: {:?}", entry_point.permutation);
+                let permutation = Permutation {
+                    parameters: entry_point.permutation,
+                    constants: entry_point.constants.into(),
+                };
+
+                if !entry.contains(&permutation) {
+                    info!("New permutation: {:?}", permutation);
                     export
                         .entry_points
                         .get_mut(entry_point.shader)
                         .unwrap()
-                        .push(entry_point.permutation);
+                        .push(permutation);
                     export.changed = true;
                 }
             }

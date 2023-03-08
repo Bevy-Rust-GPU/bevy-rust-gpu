@@ -50,7 +50,7 @@ where
 
         app.add_system(
             module_meta_events::<M>
-                .in_base_set(CoreSet::Last)
+                .in_base_set(CoreSet::PreUpdate)
                 .after(shader_events::<M>)
                 .before(reload_materials::<M>),
         );

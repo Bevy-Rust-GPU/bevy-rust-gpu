@@ -47,8 +47,12 @@ where
     M::Data: Clone + Eq + std::hash::Hash,
 {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_system(reload_materials::<M>.in_base_set(CoreSet::Last));
-        app.add_system(shader_events::<M>.before(reload_materials::<M>));
+        app.add_system(reload_materials::<M>.in_base_set(CoreSet::PreUpdate));
+        app.add_system(
+            shader_events::<M>
+                .in_base_set(CoreSet::PreUpdate)
+                .before(reload_materials::<M>),
+        );
 
         app.add_plugin(MaterialPlugin::<RustGpu<M>>::default());
 
@@ -335,6 +339,7 @@ where
                     .send(crate::prelude::Export {
                         shader: M::Vertex::NAME,
                         permutation: M::Vertex::permutation(&descriptor.vertex.shader_defs),
+                        constants: M::Vertex::constants(&descriptor.vertex.shader_defs),
                     })
                     .unwrap();
             };
@@ -394,6 +399,7 @@ where
                         .send(crate::prelude::Export {
                             shader: M::Fragment::NAME,
                             permutation: M::Fragment::permutation(&fragment_descriptor.shader_defs),
+                            constants: M::Fragment::constants(&fragment_descriptor.shader_defs),
                         })
                         .unwrap();
                 };

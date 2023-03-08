@@ -2,7 +2,10 @@
 
 use bevy::{prelude::StandardMaterial, render::render_resource::ShaderDefVal};
 
-use crate::prelude::{EntryPoint, EntryPointName, EntryPointParameters, RustGpuMaterial};
+use crate::{
+    prelude::{EntryPoint, EntryPointName, EntryPointParameters, RustGpuMaterial},
+    EntryPointConstants,
+};
 
 /// `bevy_rust_gpu::mesh::entry_points::vertex`
 pub enum MeshVertex {}
@@ -14,6 +17,7 @@ impl EntryPoint for MeshVertex {
         (&[("VERTEX_COLORS", "some")], "none"),
         (&[("SKINNED", "some")], "none"),
     ];
+    const CONSTANTS: EntryPointConstants = &[];
 }
 
 /// `bevy_rust_gpu::mesh::entry_points::fragment`
@@ -22,6 +26,7 @@ pub enum MeshFragment {}
 impl EntryPoint for MeshFragment {
     const NAME: EntryPointName = "mesh::entry_points::fragment";
     const PARAMETERS: EntryPointParameters = &[];
+    const CONSTANTS: EntryPointConstants = &[];
 }
 
 /// `bevy_rust_gpu::pbr::entry_points::fragment`
@@ -37,8 +42,16 @@ impl EntryPoint for PbrFragment {
         (&[("STANDARDMATERIAL_NORMAL_MAP", "some")], "none"),
         (&[("SKINNED", "some")], "none"),
         (&[("TONEMAP_IN_SHADER", "some")], "none"),
-        (&[("PREMULTIPLY_ALPHA", "some")], "none"),
         (&[("DEBAND_DITHER", "some")], "none"),
+        (
+            &[
+                ("BLEND_MULTIPLY", "multiply"),
+                ("BLEND_PREMULTIPLIED_ALPHA", "blend_premultiplied_alpha"),
+            ],
+            "none",
+        ),
+        (&[("ENVIRONMENT_MAP", "some")], "none"),
+        (&[("PREMULTIPLY_ALPHA", "some")], "none"),
         (
             &[
                 ("CLUSTERED_FORWARD_DEBUG_Z_SLICES", "debug_z_slices"),
@@ -53,7 +66,12 @@ impl EntryPoint for PbrFragment {
             ],
             "none",
         ),
+        (
+            &[("DIRECTIONAL_LIGHT_SHADOW_MAP_DEBUG_CASCADES", "some")],
+            "none",
+        ),
     ];
+    const CONSTANTS: EntryPointConstants = &["MAX_DIRECTIONAL_LIGHTS", "MAX_CASCADES_PER_LIGHT"];
 
     fn permutation(shader_defs: &Vec<ShaderDefVal>) -> Vec<String> {
         let mut permutation = vec![];
