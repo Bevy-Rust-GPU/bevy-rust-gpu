@@ -100,6 +100,9 @@
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Plugin systems.
 
 </span><span class="kw">use </span>bevy::prelude::{info, AssetEvent, Assets, EventReader, Res, ResMut, Shader};
@@ -108,6 +111,9 @@
     prelude::{ChangedShaders, RustGpuMaterial},
     RustGpu,
 };
+
+<span class="attr">#[allow(unused_imports)]
+</span><span class="kw">use </span><span class="kw">crate</span>::prelude::ModuleMeta;
 
 <span class="doccomment">/// Listens for [`Shader`](bevy::prelude::Shader) asset events, clears metadata if the respective flag is enabled,
 /// and aggregates change events for application in [`reload_materials`].
