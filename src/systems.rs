@@ -7,6 +7,9 @@ use crate::{
     RustGpu,
 };
 
+#[allow(unused_imports)]
+use crate::prelude::ModuleMeta;
+
 /// Listens for [`Shader`](bevy::prelude::Shader) asset events, clears metadata if the respective flag is enabled,
 /// and aggregates change events for application in [`reload_materials`].
 pub fn shader_events<M>(
