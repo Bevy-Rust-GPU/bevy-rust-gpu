@@ -299,13 +299,6 @@ where
                 break 'vertex;
             };
 
-            info!("Vertex meta is valid");
-            info!("Checking entry point {entry_point:}");
-            if !artifact.entry_points.contains(&entry_point) {
-                warn!("Missing vertex entry point {entry_point:}, falling back to default shader.");
-                break 'vertex;
-            }
-
             #[cfg(feature = "hot-rebuild")]
             'hot_rebuild: {
                 let exports = crate::prelude::MATERIAL_EXPORTS.read().unwrap();
@@ -327,6 +320,12 @@ where
                     })
                     .unwrap();
             };
+
+            info!("Checking entry point {entry_point:}");
+            if !artifact.entry_points.contains(&entry_point) {
+                warn!("Missing vertex entry point {entry_point:}, falling back to default shader.");
+                break 'vertex;
+            }
 
             let vertex_shader = match &artifact.modules {
                 crate::prelude::RustGpuModules::Single(single) => single.clone(),
@@ -362,13 +361,6 @@ where
                         break 'fragment;
                     };
 
-                info!("Fragment meta is valid");
-                info!("Checking entry point {entry_point:}");
-                if !artifact.entry_points.contains(&entry_point) {
-                    warn!("Missing fragment entry point {entry_point:}, falling back to default shader.");
-                    break 'fragment;
-                }
-
                 #[cfg(feature = "hot-rebuild")]
                 'hot_rebuild: {
                     let exports = crate::prelude::MATERIAL_EXPORTS.read().unwrap();
@@ -390,6 +382,12 @@ where
                         })
                         .unwrap();
                 };
+
+                info!("Checking entry point {entry_point:}");
+                if !artifact.entry_points.contains(&entry_point) {
+                    warn!("Missing fragment entry point {entry_point:}, falling back to default shader.");
+                    break 'fragment;
+                }
 
                 let fragment_shader = match &artifact.modules {
                     crate::prelude::RustGpuModules::Single(single) => single.clone(),
