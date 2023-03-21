@@ -1,35 +1,20 @@
 //! Main Rust-GPU plugin.
 
-use bevy::{
-    prelude::{default, Plugin},
-    render::settings::{WgpuLimits, WgpuSettings},
-};
+use bevy::prelude::Plugin;
 
-use crate::prelude::ChangedShaders;
+use crate::prelude::BuilderOutputPlugin;
 
-/// Enforces WGPU limitations required by `rust-gpu`,
-/// and runs initial backend setup.
+/// Main Rust-GPU plugin.
+///
+/// Adds support for `RustGpuBuilderOutput` assets,
+/// and configures entry point export if the `hot-reload` feature is enabled.
 pub struct RustGpuPlugin;
 
 impl Plugin for RustGpuPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        // Initialize `ChangedShaders` resource
-        app.init_resource::<ChangedShaders>();
+        app.add_plugin(BuilderOutputPlugin);
 
-        // Add entry point export plugin
         #[cfg(feature = "hot-rebuild")]
         app.add_plugin(crate::prelude::EntryPointExportPlugin);
-    }
-}
-
-impl RustGpuPlugin {
-    pub fn wgpu_settings() -> WgpuSettings {
-        WgpuSettings {
-            constrained_limits: Some(WgpuLimits {
-                max_storage_buffers_per_shader_stage: 0,
-                ..default()
-            }),
-            ..default()
-        }
     }
 }

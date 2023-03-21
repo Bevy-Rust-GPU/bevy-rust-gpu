@@ -8,27 +8,23 @@
 //! Can be used in conjunction with `rust-gpu-builder` and `permutate-macro`
 //! to drive a real-time shader recompilation pipeline.
 
+mod builder_output;
 mod entry_point;
-mod load_rust_gpu_shader;
 mod plugin;
 mod rust_gpu;
 mod rust_gpu_material;
 
-pub mod systems;
-
 pub use entry_point::*;
-pub use load_rust_gpu_shader::LoadRustGpuShader;
 pub use plugin::RustGpuPlugin;
 pub use rust_gpu::*;
 pub use rust_gpu_material::RustGpuMaterial;
 
-#[cfg(feature = "bevy-pbr-rust")]
-pub mod bevy_pbr_rust;
-
-#[cfg(feature = "hot-reload")]
-pub mod shader_meta;
+pub use rust_gpu_builder_shared::{RustGpuBuilderModules, RustGpuBuilderOutput};
 
 #[cfg(feature = "hot-rebuild")]
 pub mod entry_point_export;
+
+#[cfg(feature = "bevy-pbr-rust")]
+pub mod bevy_pbr_rust;
 
 pub mod prelude;

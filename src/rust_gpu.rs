@@ -5,20 +5,17 @@ use std::{any::TypeId, marker::PhantomData, path::PathBuf, sync::RwLock};
 use bevy::{
     pbr::MaterialPipelineKey,
     prelude::{
-        default, info, warn, CoreSet, Deref, DerefMut, Handle, Image, IntoSystemConfig, Material,
-        MaterialPlugin, Plugin, Resource, Shader,
+        default, info, warn, AssetEvent, Assets, CoreSet, EventReader, Handle, Image,
+        IntoSystemConfig, Material, MaterialPlugin, Plugin, ResMut,
     },
     reflect::TypeUuid,
     render::render_resource::{AsBindGroup, PreparedBindGroup, ShaderRef},
-    utils::{HashMap, HashSet},
+    utils::HashMap,
 };
 use once_cell::sync::Lazy;
+use rust_gpu_builder_shared::RustGpuBuilderOutput;
 
-use crate::{
-    load_rust_gpu_shader::RustGpuShader,
-    prelude::{EntryPoint, RustGpuMaterial},
-    systems::{reload_materials, shader_events},
-};
+use crate::prelude::{EntryPoint, RustGpuMaterial};
 
 static MATERIAL_SETTINGS: Lazy<RwLock<HashMap<TypeId, RustGpuSettings>>> = Lazy::new(default);
 
@@ -47,23 +44,10 @@ where
     M::Data: Clone + Eq + std::hash::Hash,
 {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_system(reload_materials::<M>.in_base_set(CoreSet::PreUpdate));
-        app.add_system(
-            shader_events::<M>
-                .in_base_set(CoreSet::PreUpdate)
-                .before(reload_materials::<M>),
-        );
-
         app.add_plugin(MaterialPlugin::<RustGpu<M>>::default());
-
-        #[cfg(feature = "hot-reload")]
-        app.add_plugin(crate::prelude::ShaderMetaPlugin::<M>::default());
+        app.add_system(reload_materials::<M>.in_base_set(CoreSet::PreUpdate));
     }
 }
-
-/// A resource to track `rust-gpu` shaders that have been reloaded on a given frame
-#[derive(Debug, Default, Clone, Deref, DerefMut, Resource)]
-pub struct ChangedShaders(pub HashSet<Handle<Shader>>);
 
 /// Type-level RustGpu material settings
 #[derive(Debug, Default, Copy, Clone)]
@@ -80,8 +64,8 @@ where
     M: AsBindGroup,
 {
     pub base: M::Data,
-    pub vertex_shader: Option<RustGpuShader>,
-    pub fragment_shader: Option<RustGpuShader>,
+    pub vertex_shader: Option<Handle<RustGpuBuilderOutput>>,
+    pub fragment_shader: Option<Handle<RustGpuBuilderOutput>>,
     pub iteration: usize,
 }
 
@@ -141,10 +125,10 @@ pub struct RustGpu<M> {
     pub base: M,
 
     /// If `Some`, overrides [`Material::vertex_shader`] during specialization.
-    pub vertex_shader: Option<RustGpuShader>,
+    pub vertex_shader: Option<Handle<RustGpuBuilderOutput>>,
 
     /// If `Some`, overrides [`Material::fragment_shader`] during specialization.
-    pub fragment_shader: Option<RustGpuShader>,
+    pub fragment_shader: Option<Handle<RustGpuBuilderOutput>>,
 
     /// Current reload iteration, used to drive hot-reloading.
     pub iteration: usize,
@@ -298,28 +282,28 @@ where
         )?;
 
         info!("Specializing RustGpu material");
-        if let Some(vertex_shader) = key.bind_group_data.vertex_shader {
+        'vertex: {
+            let Some(vertex_shader) = key.bind_group_data.vertex_shader else {
+                break 'vertex;
+            };
+
             info!("Vertex shader is present, aggregating defs");
 
             let entry_point = M::Vertex::build(&descriptor.vertex.shader_defs);
             info!("Built vertex entrypoint {entry_point:}");
 
-            #[allow(unused_mut)]
-            let mut apply = true;
+            info!("Vertex meta is present");
+            let artifacts = crate::prelude::RUST_GPU_ARTIFACTS.read().unwrap();
+            let Some(artifact) = artifacts.get(&vertex_shader) else {
+                warn!("Missing vertex artifact, falling back to default shader.");
+                break 'vertex;
+            };
 
-            #[cfg(feature = "hot-reload")]
-            {
-                let metas = crate::prelude::SHADER_META.read().unwrap();
-                if let Some(vertex_meta) = metas.get(&vertex_shader.0) {
-                    info!("Vertex meta is valid");
-                    info!("Checking entry point {entry_point:}");
-                    if !vertex_meta.entry_points.contains(&entry_point) {
-                        warn!("Missing entry point {entry_point:}");
-                        apply = false;
-                    }
-                } else {
-                    apply = false;
-                }
+            info!("Vertex meta is valid");
+            info!("Checking entry point {entry_point:}");
+            if !artifact.entry_points.contains(&entry_point) {
+                warn!("Missing vertex entry point {entry_point:}, falling back to default shader.");
+                break 'vertex;
             }
 
             #[cfg(feature = "hot-rebuild")]
@@ -344,42 +328,45 @@ where
                     .unwrap();
             };
 
-            if apply {
-                info!("Applying vertex shader and entry point");
-                descriptor.vertex.shader = vertex_shader.0;
-                descriptor.vertex.entry_point = entry_point.into();
+            let vertex_shader = match &artifact.modules {
+                crate::prelude::RustGpuModules::Single(single) => single.clone(),
+                crate::prelude::RustGpuModules::Multi(multi) => {
+                    let Some(shader) = multi.get(&entry_point) else {
+                        break 'vertex;
+                    };
 
-                // Clear shader defs to satify ShaderProcessor
-                descriptor.vertex.shader_defs.clear();
-            } else {
-                warn!("Falling back to default vertex shader.");
-            }
+                    shader.clone()
+                }
+            };
+
+            info!("Applying vertex shader and entry point");
+            descriptor.vertex.shader = vertex_shader;
+            descriptor.vertex.entry_point = entry_point.into();
+
+            // Clear shader defs to satify ShaderProcessor
+            descriptor.vertex.shader_defs.clear();
         }
 
-        if let Some(fragment_descriptor) = descriptor.fragment.as_mut() {
+        'fragment: {
+            let Some(fragment_descriptor) = descriptor.fragment.as_mut() else { break 'fragment};
             if let Some(fragment_shader) = key.bind_group_data.fragment_shader {
                 info!("Fragment shader is present, aggregating defs");
 
                 let entry_point = M::Fragment::build(&fragment_descriptor.shader_defs);
                 info!("Built fragment entrypoint {entry_point:}");
 
-                #[allow(unused_mut)]
-                let mut apply = true;
+                info!("Fragment meta is present");
+                let artifacts = crate::prelude::RUST_GPU_ARTIFACTS.read().unwrap();
+                let Some(artifact) = artifacts.get(&fragment_shader) else {
+                        warn!("Missing fragment artifact, falling back to default shader.");
+                        break 'fragment;
+                    };
 
-                #[cfg(feature = "hot-reload")]
-                {
-                    info!("Fragment meta is present");
-                    let metas = crate::prelude::SHADER_META.read().unwrap();
-                    if let Some(fragment_meta) = metas.get(&fragment_shader.0) {
-                        info!("Fragment meta is valid");
-                        info!("Checking entry point {entry_point:}");
-                        if !fragment_meta.entry_points.contains(&entry_point) {
-                            apply = false;
-                            warn!("Missing entry point {entry_point:}, falling back to default fragment shader.");
-                        }
-                    } else {
-                        apply = false;
-                    }
+                info!("Fragment meta is valid");
+                info!("Checking entry point {entry_point:}");
+                if !artifact.entry_points.contains(&entry_point) {
+                    warn!("Missing fragment entry point {entry_point:}, falling back to default shader.");
+                    break 'fragment;
                 }
 
                 #[cfg(feature = "hot-rebuild")]
@@ -404,16 +391,24 @@ where
                         .unwrap();
                 };
 
-                if apply {
-                    info!("Applying fragment shader and entry point");
-                    fragment_descriptor.shader = fragment_shader.0;
-                    fragment_descriptor.entry_point = entry_point.into();
+                let fragment_shader = match &artifact.modules {
+                    crate::prelude::RustGpuModules::Single(single) => single.clone(),
+                    crate::prelude::RustGpuModules::Multi(multi) => {
+                        let Some(shader) = multi.get(&entry_point) else {
+                            warn!("Missing handle for entry point {entry_point:}, falling back to default shader.");
+                        break 'fragment;
+                    };
 
-                    // Clear shader defs to satify ShaderProcessor
-                    fragment_descriptor.shader_defs.clear();
-                } else {
-                    warn!("Falling back to default fragment shader.");
-                }
+                        shader.clone()
+                    }
+                };
+
+                info!("Applying fragment shader and entry point");
+                fragment_descriptor.shader = fragment_shader;
+                fragment_descriptor.entry_point = entry_point.into();
+
+                // Clear shader defs to satify ShaderProcessor
+                fragment_descriptor.shader_defs.clear();
             }
         }
 
@@ -438,5 +433,36 @@ where
     pub fn export_to<P: Into<PathBuf>>(path: P) {
         let mut handles = crate::prelude::MATERIAL_EXPORTS.write().unwrap();
         handles.insert(std::any::TypeId::of::<Self>(), path.into());
+    }
+}
+
+/// [`RustGpuBuilderOutput`] asset event handler.
+///
+/// Handles loading shader assets, maintaining static material data, and respecializing materials on reload.
+pub fn reload_materials<M>(
+    mut builder_output_events: EventReader<AssetEvent<RustGpuBuilderOutput>>,
+    mut materials: ResMut<Assets<RustGpu<M>>>,
+) where
+    M: RustGpuMaterial,
+{
+    for event in builder_output_events.iter() {
+        if let AssetEvent::Created { handle } | AssetEvent::Modified { handle } = event {
+            // Mark any materials referencing this asset for respecialization
+            for (_, material) in materials.iter_mut() {
+                let mut reload = false;
+
+                if let Some(vertex_shader) = &material.vertex_shader {
+                    reload |= vertex_shader == handle;
+                }
+
+                if let Some(fragment_shader) = &material.fragment_shader {
+                    reload |= fragment_shader == handle;
+                }
+
+                if reload {
+                    material.iteration += 1;
+                }
+            }
+        }
     }
 }
