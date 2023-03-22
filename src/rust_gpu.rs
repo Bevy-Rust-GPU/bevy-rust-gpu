@@ -292,13 +292,6 @@ where
             let entry_point = M::Vertex::build(&descriptor.vertex.shader_defs);
             info!("Built vertex entrypoint {entry_point:}");
 
-            info!("Vertex meta is present");
-            let artifacts = crate::prelude::RUST_GPU_ARTIFACTS.read().unwrap();
-            let Some(artifact) = artifacts.get(&vertex_shader) else {
-                warn!("Missing vertex artifact, falling back to default shader.");
-                break 'vertex;
-            };
-
             #[cfg(feature = "hot-rebuild")]
             'hot_rebuild: {
                 let exports = crate::prelude::MATERIAL_EXPORTS.read().unwrap();
@@ -319,6 +312,13 @@ where
                         constants: M::Vertex::constants(&descriptor.vertex.shader_defs),
                     })
                     .unwrap();
+            };
+
+            info!("Vertex meta is present");
+            let artifacts = crate::prelude::RUST_GPU_ARTIFACTS.read().unwrap();
+            let Some(artifact) = artifacts.get(&vertex_shader) else {
+                warn!("Missing vertex artifact, falling back to default shader.");
+                break 'vertex;
             };
 
             info!("Checking entry point {entry_point:}");
@@ -354,13 +354,6 @@ where
                 let entry_point = M::Fragment::build(&fragment_descriptor.shader_defs);
                 info!("Built fragment entrypoint {entry_point:}");
 
-                info!("Fragment meta is present");
-                let artifacts = crate::prelude::RUST_GPU_ARTIFACTS.read().unwrap();
-                let Some(artifact) = artifacts.get(&fragment_shader) else {
-                        warn!("Missing fragment artifact, falling back to default shader.");
-                        break 'fragment;
-                    };
-
                 #[cfg(feature = "hot-rebuild")]
                 'hot_rebuild: {
                     let exports = crate::prelude::MATERIAL_EXPORTS.read().unwrap();
@@ -382,6 +375,13 @@ where
                         })
                         .unwrap();
                 };
+
+                info!("Fragment meta is present");
+                let artifacts = crate::prelude::RUST_GPU_ARTIFACTS.read().unwrap();
+                let Some(artifact) = artifacts.get(&fragment_shader) else {
+                        warn!("Missing fragment artifact, falling back to default shader.");
+                        break 'fragment;
+                    };
 
                 info!("Checking entry point {entry_point:}");
                 if !artifact.entry_points.contains(&entry_point) {
