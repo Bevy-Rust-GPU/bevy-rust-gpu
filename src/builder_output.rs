@@ -1,10 +1,9 @@
 use std::{collections::BTreeMap, sync::RwLock};
 
 use bevy::prelude::{
-    default, AssetEvent, Assets, CoreSet, Deref, DerefMut, EventReader, Handle,
-    IntoSystemConfig, Plugin, Res, ResMut, Shader,
+    default, AssetEvent, Assets, CoreSet, Deref, DerefMut, EventReader, Handle, IntoSystemConfig,
+    Plugin, Res, ResMut, Shader,
 };
-use bevy_common_assets::json::JsonAssetPlugin;
 use once_cell::sync::Lazy;
 use rust_gpu_builder_shared::RustGpuBuilderOutput;
 
@@ -15,9 +14,15 @@ pub struct BuilderOutputPlugin;
 
 impl Plugin for BuilderOutputPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_plugin(JsonAssetPlugin::<RustGpuBuilderOutput>::new(&[
-            "rust-gpu.json",
-        ]));
+        #[cfg(feature = "json")]
+        app.add_plugin(bevy_common_assets::json::JsonAssetPlugin::<
+            RustGpuBuilderOutput,
+        >::new(&["rust-gpu.json"]));
+
+        #[cfg(feature = "msgpack")]
+        app.add_plugin(bevy_common_assets::msgpack::MsgPackAssetPlugin::<
+            RustGpuBuilderOutput,
+        >::new(&["rust-gpu.msgpack"]));
 
         app.add_system(builder_output_events.in_base_set(CoreSet::PreUpdate));
     }
@@ -65,19 +70,15 @@ pub fn builder_output_events(
                         modules: RustGpuModules::Single(shader),
                     }
                 }
-                rust_gpu_builder_shared::RustGpuBuilderModules::Multi(multi) => {
-                    RustGpuArtifact {
-                        entry_points: asset.entry_points,
-                        modules: RustGpuModules::Multi(
-                            multi
-                                .into_iter()
-                                .map(|(k, module)| {
-                                    (k.clone(), shaders.add(Shader::from_spirv(module)))
-                                })
-                                .collect(),
-                        ),
-                    }
-                }
+                rust_gpu_builder_shared::RustGpuBuilderModules::Multi(multi) => RustGpuArtifact {
+                    entry_points: asset.entry_points,
+                    modules: RustGpuModules::Multi(
+                        multi
+                            .into_iter()
+                            .map(|(k, module)| (k.clone(), shaders.add(Shader::from_spirv(module))))
+                            .collect(),
+                    ),
+                },
             };
 
             // Emplace it in static storage
@@ -93,4 +94,3 @@ pub fn builder_output_events(
         }
     }
 }
-
