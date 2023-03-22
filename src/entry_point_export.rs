@@ -26,17 +26,36 @@ pub(crate) static MATERIAL_EXPORTS: once_cell::sync::Lazy<
     std::sync::RwLock<HashMap<std::any::TypeId, PathBuf>>,
 > = once_cell::sync::Lazy::new(default);
 
-/// Handles exporting known `RustGpuMaterial` permutations to a JSON file for static compilation.
-pub struct EntryPointExportPlugin;
+/// Export writer function wrapping `std::fs::File` and `serde_json::to_writer_pretty`
+pub fn file_writer(path: PathBuf, entry_points: EntryPoints) {
+    let writer = File::create(path).unwrap();
+    serde_json::to_writer_pretty(writer, &entry_points).unwrap();
+}
 
-impl Plugin for EntryPointExportPlugin {
+/// Handles exporting known `RustGpuMaterial` permutations to a JSON file for static compilation.
+pub struct EntryPointExportPlugin<F> {
+    pub writer: F,
+}
+
+impl Default for EntryPointExportPlugin<fn(PathBuf, EntryPoints)> {
+    fn default() -> Self {
+        EntryPointExportPlugin {
+            writer: file_writer,
+        }
+    }
+}
+
+impl<F> Plugin for EntryPointExportPlugin<F>
+where
+    F: Fn(PathBuf, EntryPoints) + Clone + Send + Sync + 'static,
+{
     fn build(&self, app: &mut bevy::prelude::App) {
         app.world.init_non_send_resource::<EntryPointExport>();
 
         app.add_systems((
             EntryPointExport::create_export_containers_system.in_base_set(CoreSet::Update),
             EntryPointExport::receive_entry_points_system.in_base_set(CoreSet::Last),
-            EntryPointExport::export_entry_points_system
+            EntryPointExport::export_entry_points_system(self.writer.clone())
                 .in_base_set(CoreSet::Last)
                 .after(EntryPointExport::receive_entry_points_system),
         ));
@@ -87,16 +106,16 @@ impl From<Vec<ShaderDefVal>> for PermutationConstants {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct Permutation {
+pub struct Permutation {
     parameters: Vec<String>,
     constants: PermutationConstants,
 }
 
 /// Serializable container for a single entry point
 #[derive(Debug, Default, Clone, Deref, DerefMut, Serialize, Deserialize)]
-struct EntryPoints {
+pub struct EntryPoints {
     #[serde(flatten)]
-    entry_points: HashMap<String, Vec<Permutation>>,
+    pub entry_points: HashMap<String, Vec<Permutation>>,
 }
 
 /// Container for a set of entry points, with MPSC handles and change tracking
@@ -166,20 +185,22 @@ impl EntryPointExport {
     }
 
     /// System used to write active entry point sets to their respective files on change via the IO task pool.
-    pub fn export_entry_points_system(mut exports: NonSendMut<Self>) {
-        for (path, export) in exports.exports.iter_mut() {
-            if export.changed {
-                let entry_points = export.entry_points.clone();
-                let path = path.clone();
-                let io_pool = IoTaskPool::get();
-                io_pool
-                    .spawn(async move {
-                        info!("Exporting entry points to {:}", path.to_str().unwrap());
-                        let writer = File::create(path).unwrap();
-                        serde_json::to_writer_pretty(writer, &entry_points).unwrap();
-                    })
-                    .detach();
-                export.changed = false;
+    pub fn export_entry_points_system<F>(f: F) -> impl Fn(NonSendMut<Self>) + Send + Sync + 'static
+    where
+        F: Fn(PathBuf, EntryPoints) + Clone + Send + Sync + 'static,
+    {
+        move |mut exports: NonSendMut<Self>| {
+            for (path, export) in exports.exports.iter_mut() {
+                if export.changed {
+                    let entry_points = export.entry_points.clone();
+                    let path = path.clone();
+                    let f = f.clone();
+                    info!("Exporting entry points to {:}", path.to_str().unwrap());
+                    IoTaskPool::get()
+                        .spawn(async move { f(path, entry_points) })
+                        .detach();
+                    export.changed = false;
+                }
             }
         }
     }
