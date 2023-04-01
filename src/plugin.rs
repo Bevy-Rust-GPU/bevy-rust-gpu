@@ -22,6 +22,10 @@ pub struct RustGpuPlugin<F> {
 impl Default for RustGpuPlugin<fn(PathBuf, EntryPoints)> {
     fn default() -> Self {
         Self {
+            #[cfg(target_family = "wasm")]
+            export_writer: |_, _| (),
+
+            #[cfg(not(target_family = "wasm"))]
             export_writer: file_writer,
         }
     }
