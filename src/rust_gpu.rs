@@ -3,13 +3,17 @@
 use std::{any::TypeId, marker::PhantomData, path::PathBuf, sync::RwLock};
 
 use bevy::{
+    asset::Asset,
     pbr::MaterialPipelineKey,
     prelude::{
         default, info, warn, AssetEvent, Assets, CoreSet, EventReader, Handle, Image,
         IntoSystemConfig, Material, MaterialPlugin, Plugin, ResMut,
     },
     reflect::TypeUuid,
-    render::render_resource::{AsBindGroup, PreparedBindGroup, ShaderRef},
+    render::render_resource::{
+        AsBindGroup, PreparedBindGroup, ShaderRef, SpecializedMeshPipelineError,
+    },
+    sprite::{Material2d, Material2dKey, Material2dPlugin},
     utils::HashMap,
 };
 use once_cell::sync::Lazy;
@@ -19,7 +23,7 @@ use crate::prelude::{EntryPoint, RustGpuMaterial};
 
 static MATERIAL_SETTINGS: Lazy<RwLock<HashMap<TypeId, RustGpuSettings>>> = Lazy::new(default);
 
-/// Configures backend support for [`RustGpu<M>`].
+/// Configures backend [`Material`] support for [`RustGpu<M>`].
 pub struct RustGpuMaterialPlugin<M>
 where
     M: RustGpuMaterial,
@@ -29,7 +33,7 @@ where
 
 impl<M> Default for RustGpuMaterialPlugin<M>
 where
-    M: RustGpuMaterial,
+    M: Material + RustGpuMaterial,
 {
     fn default() -> Self {
         RustGpuMaterialPlugin {
@@ -40,11 +44,41 @@ where
 
 impl<M> Plugin for RustGpuMaterialPlugin<M>
 where
-    M: RustGpuMaterial,
+    M: Material + RustGpuMaterial,
     M::Data: Clone + Eq + std::hash::Hash,
 {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_plugin(MaterialPlugin::<RustGpu<M>>::default());
+        app.add_system(reload_materials::<M>.in_base_set(CoreSet::PreUpdate));
+    }
+}
+
+/// Configures backend [`Material2d`] support for [`RustGpu<M>`].
+pub struct RustGpuMaterial2dPlugin<M>
+where
+    M: RustGpuMaterial,
+{
+    _phantom: PhantomData<M>,
+}
+
+impl<M> Default for RustGpuMaterial2dPlugin<M>
+where
+    M: Material2d + RustGpuMaterial,
+{
+    fn default() -> Self {
+        RustGpuMaterial2dPlugin {
+            _phantom: default(),
+        }
+    }
+}
+
+impl<M> Plugin for RustGpuMaterial2dPlugin<M>
+where
+    M: Material2d + RustGpuMaterial,
+    M::Data: Clone + Eq + std::hash::Hash,
+{
+    fn build(&self, app: &mut bevy::prelude::App) {
+        app.add_plugin(Material2dPlugin::<RustGpu<M>>::default());
         app.add_system(reload_materials::<M>.in_base_set(CoreSet::PreUpdate));
     }
 }
@@ -222,9 +256,165 @@ where
     }
 }
 
+impl<M> RustGpu<M>
+where
+    M: AsBindGroup + RustGpuMaterial + Send + Sync + 'static,
+{
+    fn specialize_generic(
+        descriptor: &mut bevy::render::render_resource::RenderPipelineDescriptor,
+        key: RustGpuKey<M>,
+    ) -> Result<(), SpecializedMeshPipelineError> {
+        info!("Specializing RustGpu material");
+        'vertex: {
+            let Some(vertex_shader) = key.vertex_shader else {
+                break 'vertex;
+            };
+
+            info!("Vertex shader is present, aggregating defs");
+
+            let entry_point = M::Vertex::build(&descriptor.vertex.shader_defs);
+            info!("Built vertex entrypoint {entry_point:}");
+
+            #[cfg(feature = "hot-rebuild")]
+            'hot_rebuild: {
+                let exports = crate::prelude::MATERIAL_EXPORTS.read().unwrap();
+                let Some(export) = exports.get(&std::any::TypeId::of::<Self>()) else {
+                    break 'hot_rebuild;
+                };
+
+                let handles = crate::prelude::EXPORT_HANDLES.read().unwrap();
+                let Some(handle) = handles.get(export) else {
+                    break 'hot_rebuild;
+                };
+
+                info!("Entrypoint sender is valid");
+                handle
+                    .send(crate::prelude::Export {
+                        shader: M::Vertex::NAME,
+                        permutation: M::Vertex::permutation(&descriptor.vertex.shader_defs),
+                        constants: M::Vertex::filter_constants(&descriptor.vertex.shader_defs),
+                        types: M::Vertex::types()
+                            .into_iter()
+                            .map(|(key, value)| (key.to_string(), value.to_string()))
+                            .collect(),
+                    })
+                    .unwrap();
+            };
+
+            info!("Vertex meta is present");
+            let artifacts = crate::prelude::RUST_GPU_ARTIFACTS.read().unwrap();
+            let Some(artifact) = artifacts.get(&vertex_shader) else {
+                warn!("Missing vertex artifact, falling back to default shader.");
+                break 'vertex;
+            };
+
+            info!("Checking entry point {entry_point:}");
+            if !artifact.entry_points.contains(&entry_point) {
+                warn!("Missing vertex entry point {entry_point:}, falling back to default shader.");
+                break 'vertex;
+            }
+
+            let vertex_shader = match &artifact.modules {
+                crate::prelude::RustGpuModules::Single(single) => single.clone(),
+                crate::prelude::RustGpuModules::Multi(multi) => {
+                    let Some(shader) = multi.get(&entry_point) else {
+                        break 'vertex;
+                    };
+
+                    shader.clone()
+                }
+            };
+
+            info!("Applying vertex shader and entry point");
+            descriptor.vertex.shader = vertex_shader;
+            descriptor.vertex.entry_point = entry_point.into();
+
+            // Clear shader defs to satify ShaderProcessor
+            descriptor.vertex.shader_defs.clear();
+        }
+
+        'fragment: {
+            let Some(fragment_descriptor) = descriptor.fragment.as_mut() else { break 'fragment};
+            if let Some(fragment_shader) = key.fragment_shader {
+                info!("Fragment shader is present, aggregating defs");
+
+                let entry_point = M::Fragment::build(&fragment_descriptor.shader_defs);
+                info!("Built fragment entrypoint {entry_point:}");
+
+                #[cfg(feature = "hot-rebuild")]
+                'hot_rebuild: {
+                    let exports = crate::prelude::MATERIAL_EXPORTS.read().unwrap();
+                    let Some(export) = exports.get(&std::any::TypeId::of::<Self>()) else {
+                        break 'hot_rebuild;
+                    };
+
+                    let handles = crate::prelude::EXPORT_HANDLES.read().unwrap();
+                    let Some(handle) = handles.get(export) else {
+                        break 'hot_rebuild;
+                    };
+
+                    info!("Entrypoint sender is valid");
+                    handle
+                        .send(crate::prelude::Export {
+                            shader: M::Fragment::NAME,
+                            permutation: M::Fragment::permutation(&fragment_descriptor.shader_defs),
+                            constants: M::Fragment::filter_constants(
+                                &fragment_descriptor.shader_defs,
+                            ),
+                            types: M::Fragment::types()
+                                .into_iter()
+                                .map(|(key, value)| (key.to_string(), value.to_string()))
+                                .collect(),
+                        })
+                        .unwrap();
+                };
+
+                info!("Fragment meta is present");
+                let artifacts = crate::prelude::RUST_GPU_ARTIFACTS.read().unwrap();
+                let Some(artifact) = artifacts.get(&fragment_shader) else {
+                        warn!("Missing fragment artifact, falling back to default shader.");
+                        break 'fragment;
+                    };
+
+                info!("Checking entry point {entry_point:}");
+                if !artifact.entry_points.contains(&entry_point) {
+                    warn!("Missing fragment entry point {entry_point:}, falling back to default shader.");
+                    break 'fragment;
+                }
+
+                let fragment_shader = match &artifact.modules {
+                    crate::prelude::RustGpuModules::Single(single) => single.clone(),
+                    crate::prelude::RustGpuModules::Multi(multi) => {
+                        let Some(shader) = multi.get(&entry_point) else {
+                            warn!("Missing handle for entry point {entry_point:}, falling back to default shader.");
+                        break 'fragment;
+                    };
+
+                        shader.clone()
+                    }
+                };
+
+                info!("Applying fragment shader and entry point");
+                fragment_descriptor.shader = fragment_shader;
+                fragment_descriptor.entry_point = entry_point.into();
+
+                // Clear shader defs to satify ShaderProcessor
+                fragment_descriptor.shader_defs.clear();
+            }
+        }
+
+        if let Some(label) = &mut descriptor.label {
+            *label = format!("rust_gpu_{}", *label).into();
+        }
+
+        Ok(())
+    }
+}
+
 impl<M> Material for RustGpu<M>
 where
-    M: RustGpuMaterial,
+    M: Material + RustGpuMaterial,
+    M::Data: Clone,
 {
     fn vertex_shader() -> bevy::render::render_resource::ShaderRef {
         if let Some(true) = MATERIAL_SETTINGS
@@ -277,142 +467,62 @@ where
             layout,
             MaterialPipelineKey {
                 mesh_key: key.mesh_key,
-                bind_group_data: key.bind_group_data.base,
+                bind_group_data: key.bind_group_data.base.clone(),
             },
         )?;
 
-        info!("Specializing RustGpu material");
-        'vertex: {
-            let Some(vertex_shader) = key.bind_group_data.vertex_shader else {
-                break 'vertex;
-            };
+        RustGpu::<M>::specialize_generic(descriptor, key.bind_group_data)?;
 
-            info!("Vertex shader is present, aggregating defs");
+        Ok(())
+    }
+}
 
-            let entry_point = M::Vertex::build(&descriptor.vertex.shader_defs);
-            info!("Built vertex entrypoint {entry_point:}");
-
-            #[cfg(feature = "hot-rebuild")]
-            'hot_rebuild: {
-                let exports = crate::prelude::MATERIAL_EXPORTS.read().unwrap();
-                let Some(export) = exports.get(&std::any::TypeId::of::<Self>()) else {
-                    break 'hot_rebuild;
-                };
-
-                let handles = crate::prelude::EXPORT_HANDLES.read().unwrap();
-                let Some(handle) = handles.get(export) else {
-                    break 'hot_rebuild;
-                };
-
-                info!("Entrypoint sender is valid");
-                handle
-                    .send(crate::prelude::Export {
-                        shader: M::Vertex::NAME,
-                        permutation: M::Vertex::permutation(&descriptor.vertex.shader_defs),
-                        constants: M::Vertex::constants(&descriptor.vertex.shader_defs),
-                    })
-                    .unwrap();
-            };
-
-            info!("Vertex meta is present");
-            let artifacts = crate::prelude::RUST_GPU_ARTIFACTS.read().unwrap();
-            let Some(artifact) = artifacts.get(&vertex_shader) else {
-                warn!("Missing vertex artifact, falling back to default shader.");
-                break 'vertex;
-            };
-
-            info!("Checking entry point {entry_point:}");
-            if !artifact.entry_points.contains(&entry_point) {
-                warn!("Missing vertex entry point {entry_point:}, falling back to default shader.");
-                break 'vertex;
-            }
-
-            let vertex_shader = match &artifact.modules {
-                crate::prelude::RustGpuModules::Single(single) => single.clone(),
-                crate::prelude::RustGpuModules::Multi(multi) => {
-                    let Some(shader) = multi.get(&entry_point) else {
-                        break 'vertex;
-                    };
-
-                    shader.clone()
-                }
-            };
-
-            info!("Applying vertex shader and entry point");
-            descriptor.vertex.shader = vertex_shader;
-            descriptor.vertex.entry_point = entry_point.into();
-
-            // Clear shader defs to satify ShaderProcessor
-            descriptor.vertex.shader_defs.clear();
+impl<M> Material2d for RustGpu<M>
+where
+    M: Material2d + RustGpuMaterial,
+    M::Data: Clone,
+{
+    fn vertex_shader() -> bevy::render::render_resource::ShaderRef {
+        if let Some(true) = MATERIAL_SETTINGS
+            .read()
+            .unwrap()
+            .get(&TypeId::of::<Self>())
+            .map(|settings| settings.fallback_base_vertex)
+        {
+            M::vertex_shader()
+        } else {
+            ShaderRef::Default
         }
+    }
 
-        'fragment: {
-            let Some(fragment_descriptor) = descriptor.fragment.as_mut() else { break 'fragment};
-            if let Some(fragment_shader) = key.bind_group_data.fragment_shader {
-                info!("Fragment shader is present, aggregating defs");
-
-                let entry_point = M::Fragment::build(&fragment_descriptor.shader_defs);
-                info!("Built fragment entrypoint {entry_point:}");
-
-                #[cfg(feature = "hot-rebuild")]
-                'hot_rebuild: {
-                    let exports = crate::prelude::MATERIAL_EXPORTS.read().unwrap();
-                    let Some(export) = exports.get(&std::any::TypeId::of::<Self>()) else {
-                        break 'hot_rebuild;
-                    };
-
-                    let handles = crate::prelude::EXPORT_HANDLES.read().unwrap();
-                    let Some(handle) = handles.get(export) else {
-                        break 'hot_rebuild;
-                    };
-
-                    info!("Entrypoint sender is valid");
-                    handle
-                        .send(crate::prelude::Export {
-                            shader: M::Fragment::NAME,
-                            permutation: M::Fragment::permutation(&fragment_descriptor.shader_defs),
-                            constants: M::Fragment::constants(&fragment_descriptor.shader_defs),
-                        })
-                        .unwrap();
-                };
-
-                info!("Fragment meta is present");
-                let artifacts = crate::prelude::RUST_GPU_ARTIFACTS.read().unwrap();
-                let Some(artifact) = artifacts.get(&fragment_shader) else {
-                        warn!("Missing fragment artifact, falling back to default shader.");
-                        break 'fragment;
-                    };
-
-                info!("Checking entry point {entry_point:}");
-                if !artifact.entry_points.contains(&entry_point) {
-                    warn!("Missing fragment entry point {entry_point:}, falling back to default shader.");
-                    break 'fragment;
-                }
-
-                let fragment_shader = match &artifact.modules {
-                    crate::prelude::RustGpuModules::Single(single) => single.clone(),
-                    crate::prelude::RustGpuModules::Multi(multi) => {
-                        let Some(shader) = multi.get(&entry_point) else {
-                            warn!("Missing handle for entry point {entry_point:}, falling back to default shader.");
-                        break 'fragment;
-                    };
-
-                        shader.clone()
-                    }
-                };
-
-                info!("Applying fragment shader and entry point");
-                fragment_descriptor.shader = fragment_shader;
-                fragment_descriptor.entry_point = entry_point.into();
-
-                // Clear shader defs to satify ShaderProcessor
-                fragment_descriptor.shader_defs.clear();
-            }
+    fn fragment_shader() -> bevy::render::render_resource::ShaderRef {
+        if let Some(true) = MATERIAL_SETTINGS
+            .read()
+            .unwrap()
+            .get(&TypeId::of::<Self>())
+            .map(|settings| settings.fallback_base_vertex)
+        {
+            M::fragment_shader()
+        } else {
+            ShaderRef::Default
         }
+    }
 
-        if let Some(label) = &mut descriptor.label {
-            *label = format!("rust_gpu_{}", *label).into();
-        }
+    fn specialize(
+        descriptor: &mut bevy::render::render_resource::RenderPipelineDescriptor,
+        layout: &bevy::render::mesh::MeshVertexBufferLayout,
+        key: bevy::sprite::Material2dKey<Self>,
+    ) -> Result<(), bevy::render::render_resource::SpecializedMeshPipelineError> {
+        M::specialize(
+            descriptor,
+            layout,
+            Material2dKey {
+                mesh_key: key.mesh_key,
+                bind_group_data: key.bind_group_data.base.clone(),
+            },
+        )?;
+
+        RustGpu::<M>::specialize_generic(descriptor, key.bind_group_data)?;
 
         Ok(())
     }
@@ -441,7 +551,7 @@ pub fn reload_materials<M>(
     mut builder_output_events: EventReader<AssetEvent<RustGpuBuilderOutput>>,
     mut materials: ResMut<Assets<RustGpu<M>>>,
 ) where
-    M: RustGpuMaterial,
+    M: Asset + RustGpuMaterial,
 {
     for event in builder_output_events.iter() {
         if let AssetEvent::Created { handle } | AssetEvent::Modified { handle } = event {
