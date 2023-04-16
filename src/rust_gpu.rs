@@ -265,9 +265,9 @@ where
         key: RustGpuKey<M>,
     ) -> Result<(), SpecializedMeshPipelineError> {
         info!("Specializing RustGpu material");
-        'vertex: {
+        let v = 'vertex: {
             let Some(vertex_shader) = key.vertex_shader else {
-                break 'vertex;
+                break 'vertex None;
             };
 
             info!("Vertex shader is present, aggregating defs");
@@ -304,103 +304,121 @@ where
             info!("Vertex meta is present");
             let artifacts = crate::prelude::RUST_GPU_ARTIFACTS.read().unwrap();
             let Some(artifact) = artifacts.get(&vertex_shader) else {
-                warn!("Missing vertex artifact, falling back to default shader.");
-                break 'vertex;
+                warn!("Missing vertex artifact.");
+                break 'vertex None;
             };
 
             info!("Checking entry point {entry_point:}");
             if !artifact.entry_points.contains(&entry_point) {
-                warn!("Missing vertex entry point {entry_point:}, falling back to default shader.");
-                break 'vertex;
+                warn!("Missing vertex entry point {entry_point:}.");
+                break 'vertex None;
             }
 
             let vertex_shader = match &artifact.modules {
                 crate::prelude::RustGpuModules::Single(single) => single.clone(),
                 crate::prelude::RustGpuModules::Multi(multi) => {
                     let Some(shader) = multi.get(&entry_point) else {
-                        break 'vertex;
+                        break 'vertex None;
                     };
 
                     shader.clone()
                 }
             };
 
-            info!("Applying vertex shader and entry point");
-            descriptor.vertex.shader = vertex_shader;
-            descriptor.vertex.entry_point = entry_point.into();
+            Some((vertex_shader, entry_point))
+        };
 
-            // Clear shader defs to satify ShaderProcessor
-            descriptor.vertex.shader_defs.clear();
-        }
+        let f = 'fragment: {
+            let (Some(fragment_descriptor), Some(fragment_shader)) = (descriptor.fragment.as_mut(), key.fragment_shader) else { break 'fragment None };
 
-        'fragment: {
-            let Some(fragment_descriptor) = descriptor.fragment.as_mut() else { break 'fragment};
-            if let Some(fragment_shader) = key.fragment_shader {
-                info!("Fragment shader is present, aggregating defs");
+            info!("Fragment shader is present, aggregating defs");
 
-                let entry_point = M::Fragment::build(&fragment_descriptor.shader_defs);
-                info!("Built fragment entrypoint {entry_point:}");
+            let entry_point = M::Fragment::build(&fragment_descriptor.shader_defs);
+            info!("Built fragment entrypoint {entry_point:}");
 
-                #[cfg(feature = "hot-rebuild")]
-                'hot_rebuild: {
-                    let exports = crate::prelude::MATERIAL_EXPORTS.read().unwrap();
-                    let Some(export) = exports.get(&std::any::TypeId::of::<Self>()) else {
+            #[cfg(feature = "hot-rebuild")]
+            'hot_rebuild: {
+                let exports = crate::prelude::MATERIAL_EXPORTS.read().unwrap();
+                let Some(export) = exports.get(&std::any::TypeId::of::<Self>()) else {
                         break 'hot_rebuild;
                     };
 
-                    let handles = crate::prelude::EXPORT_HANDLES.read().unwrap();
-                    let Some(handle) = handles.get(export) else {
+                let handles = crate::prelude::EXPORT_HANDLES.read().unwrap();
+                let Some(handle) = handles.get(export) else {
                         break 'hot_rebuild;
                     };
 
-                    info!("Entrypoint sender is valid");
-                    handle
-                        .send(crate::prelude::Export {
-                            shader: M::Fragment::NAME,
-                            permutation: M::Fragment::permutation(&fragment_descriptor.shader_defs),
-                            constants: M::Fragment::filter_constants(
-                                &fragment_descriptor.shader_defs,
-                            ),
-                            types: M::Fragment::types()
-                                .into_iter()
-                                .map(|(key, value)| (key.to_string(), value.to_string()))
-                                .collect(),
-                        })
-                        .unwrap();
-                };
+                info!("Entrypoint sender is valid");
+                handle
+                    .send(crate::prelude::Export {
+                        shader: M::Fragment::NAME,
+                        permutation: M::Fragment::permutation(&fragment_descriptor.shader_defs),
+                        constants: M::Fragment::filter_constants(&fragment_descriptor.shader_defs),
+                        types: M::Fragment::types()
+                            .into_iter()
+                            .map(|(key, value)| (key.to_string(), value.to_string()))
+                            .collect(),
+                    })
+                    .unwrap();
+            }
 
-                info!("Fragment meta is present");
-                let artifacts = crate::prelude::RUST_GPU_ARTIFACTS.read().unwrap();
-                let Some(artifact) = artifacts.get(&fragment_shader) else {
-                        warn!("Missing fragment artifact, falling back to default shader.");
-                        break 'fragment;
+            info!("Fragment meta is present");
+            let artifacts = crate::prelude::RUST_GPU_ARTIFACTS.read().unwrap();
+            let Some(artifact) = artifacts.get(&fragment_shader) else {
+                        warn!("Missing fragment artifact.");
+                        break 'fragment None;
                     };
 
-                info!("Checking entry point {entry_point:}");
-                if !artifact.entry_points.contains(&entry_point) {
-                    warn!("Missing fragment entry point {entry_point:}, falling back to default shader.");
-                    break 'fragment;
+            info!("Checking entry point {entry_point:}");
+            if !artifact.entry_points.contains(&entry_point) {
+                warn!("Missing fragment entry point {entry_point:}.");
+                break 'fragment None;
+            }
+
+            let fragment_shader = match &artifact.modules {
+                crate::prelude::RustGpuModules::Single(single) => single.clone(),
+                crate::prelude::RustGpuModules::Multi(multi) => {
+                    let Some(shader) = multi.get(&entry_point) else {
+                            warn!("Missing handle for entry point {entry_point:}.");
+                        break 'fragment None;
+                    };
+
+                    shader.clone()
                 }
+            };
 
-                let fragment_shader = match &artifact.modules {
-                    crate::prelude::RustGpuModules::Single(single) => single.clone(),
-                    crate::prelude::RustGpuModules::Multi(multi) => {
-                        let Some(shader) = multi.get(&entry_point) else {
-                            warn!("Missing handle for entry point {entry_point:}, falling back to default shader.");
-                        break 'fragment;
-                    };
+            Some((fragment_shader, entry_point))
+        };
 
-                        shader.clone()
-                    }
-                };
+        match (v, descriptor.fragment.as_mut(), f) {
+            (Some((vertex_shader, vertex_entry_point)), None, _) => {
+                info!("Applying vertex shader and entry point");
+                descriptor.vertex.shader = vertex_shader;
+                descriptor.vertex.entry_point = vertex_entry_point.into();
+
+                // Clear shader defs to satify ShaderProcessor
+                descriptor.vertex.shader_defs.clear();
+            }
+            (
+                Some((vertex_shader, vertex_entry_point)),
+                Some(fragment_descriptor),
+                Some((fragment_shader, fragment_entry_point)),
+            ) => {
+                info!("Applying vertex shader and entry point");
+                descriptor.vertex.shader = vertex_shader;
+                descriptor.vertex.entry_point = vertex_entry_point.into();
+
+                // Clear shader defs to satify ShaderProcessor
+                descriptor.vertex.shader_defs.clear();
 
                 info!("Applying fragment shader and entry point");
                 fragment_descriptor.shader = fragment_shader;
-                fragment_descriptor.entry_point = entry_point.into();
+                fragment_descriptor.entry_point = fragment_entry_point.into();
 
                 // Clear shader defs to satify ShaderProcessor
                 fragment_descriptor.shader_defs.clear();
             }
+            _ => warn!("Falling back to default shaders."),
         }
 
         if let Some(label) = &mut descriptor.label {

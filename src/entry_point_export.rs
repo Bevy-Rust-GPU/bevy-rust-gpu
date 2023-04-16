@@ -3,6 +3,7 @@
 //! This can be used in conjunction with `rust-gpu-builder` and `permutate-macro` to drive hot-recompiles.
 
 use std::{
+    collections::BTreeMap,
     fs::File,
     path::PathBuf,
     sync::mpsc::{Receiver, SyncSender},
@@ -74,6 +75,7 @@ pub struct Export {
     pub shader: &'static str,
     pub permutation: Vec<String>,
     pub constants: Vec<ShaderDefVal>,
+    pub types: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -109,6 +111,7 @@ impl From<Vec<ShaderDefVal>> for PermutationConstants {
 pub struct Permutation {
     parameters: Vec<String>,
     constants: PermutationConstants,
+    types: BTreeMap<String, String>,
 }
 
 /// Serializable container for a single entry point
@@ -169,6 +172,7 @@ impl EntryPointExport {
                 let permutation = Permutation {
                     parameters: entry_point.permutation,
                     constants: entry_point.constants.into(),
+                    types: entry_point.types,
                 };
 
                 if !entry.contains(&permutation) {
