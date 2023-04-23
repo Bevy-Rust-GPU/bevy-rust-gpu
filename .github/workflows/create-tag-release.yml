@@ -1,0 +1,44 @@
+name: Release on Tag
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: read
+
+    name: Generate Release
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Get previous tag
+        id: previousTag
+        run: |
+          name=$(git --no-pager tag --sort=creatordate --merged ${{ github.ref_name }} | tail -2 | head -1)
+          echo "previousTag: $name"
+          echo "previousTag=$name" >> $GITHUB_ENV
+
+      - name: Generate changelog
+        id: changelog
+        uses: metcalfc/changelog-generator@v4.1.0
+        with:
+          myToken: ${{ secrets.GITHUB_TOKEN }}
+          head-ref: ${{ env.previousTag }}
+          base-ref: ${{ github.ref_name }}
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1.12.0
+        with:
+          draft: true
+          token: ${{ github.token }}
+          name: "Release ${{ github.ref_name }}"
+          body: "## Release Notes\n\nTODO\n\n## Commits\n\n${{ steps.changelog.outputs.changelog }}"
