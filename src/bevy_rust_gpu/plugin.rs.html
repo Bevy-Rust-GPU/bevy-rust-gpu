@@ -33,40 +33,62 @@
 <a href="#33" id="33">33</a>
 <a href="#34" id="34">34</a>
 <a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
+<a href="#41" id="41">41</a>
+<a href="#42" id="42">42</a>
+<a href="#43" id="43">43</a>
+<a href="#44" id="44">44</a>
+<a href="#45" id="45">45</a>
+<a href="#46" id="46">46</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Main Rust-GPU plugin.
 
-</span><span class="kw">use </span>bevy::{
-    prelude::{default, Plugin},
-    render::settings::{WgpuLimits, WgpuSettings},
-};
+</span><span class="kw">use </span>std::path::PathBuf;
 
-<span class="kw">use </span><span class="kw">crate</span>::prelude::ChangedShaders;
+<span class="kw">use </span>bevy::prelude::Plugin;
 
-<span class="doccomment">/// Enforces WGPU limitations required by `rust-gpu`,
-/// and runs initial backend setup.
-</span><span class="kw">pub struct </span>RustGpuPlugin;
+<span class="kw">use </span><span class="kw">crate</span>::prelude::{file_writer, BuilderOutputPlugin, EntryPoints};
 
-<span class="kw">impl </span>Plugin <span class="kw">for </span>RustGpuPlugin {
-    <span class="kw">fn </span>build(<span class="kw-2">&amp;</span><span class="self">self</span>, app: <span class="kw-2">&amp;mut </span>bevy::prelude::App) {
-        <span class="comment">// Initialize `ChangedShaders` resource
-        </span>app.init_resource::&lt;ChangedShaders&gt;();
+<span class="doccomment">/// Main Rust-GPU plugin.
+///
+/// Adds support for `RustGpuBuilderOutput` assets,
+/// and configures entry point export if the `hot-reload` feature is enabled.
+</span><span class="attr">#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+</span><span class="kw">pub struct </span>RustGpuPlugin&lt;F&gt; {
+    <span class="attr">#[cfg(feature = <span class="string">&quot;hot-rebuild&quot;</span>)]
+    </span><span class="kw">pub </span>export_writer: F,
 
-        <span class="comment">// Add entry point export plugin
-        </span><span class="attr">#[cfg(feature = <span class="string">&quot;hot-rebuild&quot;</span>)]
-        </span>app.add_plugin(<span class="kw">crate</span>::prelude::EntryPointExportPlugin);
-    }
+    <span class="attr">#[cfg(not(feature = <span class="string">&quot;hot-rebuild&quot;</span>))]
+    </span><span class="kw">pub </span>_phantom: PhantomData&lt;F&gt;,
 }
 
-<span class="kw">impl </span>RustGpuPlugin {
-    <span class="kw">pub fn </span>wgpu_settings() -&gt; WgpuSettings {
-        WgpuSettings {
-            constrained_limits: <span class="prelude-val">Some</span>(WgpuLimits {
-                max_storage_buffers_per_shader_stage: <span class="number">0</span>,
-                ..default()
-            }),
-            ..default()
+<span class="kw">impl </span>Default <span class="kw">for </span>RustGpuPlugin&lt;<span class="kw">fn</span>(PathBuf, EntryPoints)&gt; {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            <span class="attr">#[cfg(target_family = <span class="string">&quot;wasm&quot;</span>)]
+            </span>export_writer: |<span class="kw">_</span>, <span class="kw">_</span>| (),
+
+            <span class="attr">#[cfg(not(target_family = <span class="string">&quot;wasm&quot;</span>))]
+            </span>export_writer: file_writer,
         }
     }
 }
+
+<span class="kw">impl</span>&lt;F&gt; Plugin <span class="kw">for </span>RustGpuPlugin&lt;F&gt;
+<span class="kw">where
+    </span>F: Fn(PathBuf, EntryPoints) + Clone + Send + Sync + <span class="lifetime">&#39;static</span>,
+{
+    <span class="kw">fn </span>build(<span class="kw-2">&amp;</span><span class="self">self</span>, app: <span class="kw-2">&amp;mut </span>bevy::prelude::App) {
+        app.add_plugin(BuilderOutputPlugin);
+
+        <span class="attr">#[cfg(feature = <span class="string">&quot;hot-rebuild&quot;</span>)]
+        </span>app.add_plugin(<span class="kw">crate</span>::prelude::EntryPointExportPlugin {
+            writer: <span class="self">self</span>.export_writer.clone(),
+        });
+    }
+}
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="bevy_rust_gpu" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0 (2c8cc3432 2023-03-06)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="bevy_rust_gpu" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.2 (9eb3afe9e 2023-03-27)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>

@@ -113,6 +113,27 @@
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
 <a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Trait representation of a `rust-gpu` entry point.
 
 </span><span class="kw">use </span>std::collections::BTreeMap;
@@ -129,6 +150,9 @@
 <span class="doccomment">/// A set of entry point constants for use with the [`EntryPoint`] trait.
 </span><span class="kw">pub type </span>EntryPointConstants = <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>[<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str];
 
+<span class="doccomment">/// A set of entry point constants for use with the [`EntryPoint`] trait.
+</span><span class="kw">pub type </span>EntryPointTypes = Vec&lt;(String, String)&gt;;
+
 <span class="doccomment">/// A `rust-gpu` entry point for use with [`RustGpuMaterial`](crate::rust_gpu_material::RustGpuMaterial).
 </span><span class="kw">pub trait </span>EntryPoint: <span class="lifetime">&#39;static </span>+ Send + Sync {
     <span class="doccomment">/// The entry point&#39;s base function name, including module path
@@ -139,26 +163,23 @@
     /// ```
     </span><span class="kw">const </span>NAME: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str;
 
-    <span class="doccomment">/// Mapping from bevy shader defs to `permutate-macro` parameters.
-    ///
-    /// ```
-    /// # use bevy_rust_gpu::prelude::EntryPointParameters;
-    /// const PARAMETERS: EntryPointParameters = &amp;[
-    ///     (&amp;[(&quot;VERTEX_TANGENTS&quot;, &quot;some&quot;)], &quot;none&quot;),
-    ///     (&amp;[(&quot;VERTEX_COLORS&quot;, &quot;some&quot;)], &quot;none&quot;),
-    ///     (&amp;[(&quot;SKINNED&quot;, &quot;some&quot;)], &quot;none&quot;),
-    /// ];
-    /// ```
-    </span><span class="kw">const </span>PARAMETERS: EntryPointParameters;
+    <span class="kw">fn </span>parameters() -&gt; EntryPointParameters {
+        <span class="kw-2">&amp;</span>[]
+    }
 
-    <span class="doccomment">/// Mapping from bevy shader def values to `permutate-macro` constants
-    </span><span class="kw">const </span>CONSTANTS: EntryPointConstants;
+    <span class="kw">fn </span>constants() -&gt; EntryPointConstants {
+        <span class="kw-2">&amp;</span>[]
+    }
+
+    <span class="kw">fn </span>types() -&gt; EntryPointTypes {
+        <span class="macro">vec!</span>[]
+    }
 
     <span class="doccomment">/// Constructs a permutation set from the provided shader defs
     </span><span class="kw">fn </span>permutation(shader_defs: <span class="kw-2">&amp;</span>Vec&lt;ShaderDefVal&gt;) -&gt; Vec&lt;String&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>permutation = <span class="macro">vec!</span>[];
 
-        <span class="kw">for </span>(defined, undefined) <span class="kw">in </span><span class="self">Self</span>::PARAMETERS.iter() {
+        <span class="kw">for </span>(defined, undefined) <span class="kw">in </span><span class="self">Self</span>::parameters().iter() {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(mapping) = defined.iter().find_map(|(def, mapping)| {
                 <span class="kw">if </span>shader_defs.contains(<span class="kw-2">&amp;</span>ShaderDefVal::Bool(def.to_string(), <span class="bool-val">true</span>)) {
                     <span class="prelude-val">Some</span>(mapping)
@@ -175,13 +196,13 @@
         permutation
     }
 
-    <span class="kw">fn </span>constants(shader_defs: <span class="kw-2">&amp;</span>Vec&lt;ShaderDefVal&gt;) -&gt; Vec&lt;ShaderDefVal&gt; {
+    <span class="kw">fn </span>filter_constants(shader_defs: <span class="kw-2">&amp;</span>Vec&lt;ShaderDefVal&gt;) -&gt; Vec&lt;ShaderDefVal&gt; {
         shader_defs
             .iter()
             .filter(|def| <span class="kw">match </span>def {
                 ShaderDefVal::Bool(key, <span class="kw">_</span>)
                 | ShaderDefVal::Int(key, <span class="kw">_</span>)
-                | ShaderDefVal::UInt(key, <span class="kw">_</span>) =&gt; <span class="self">Self</span>::CONSTANTS.contains(<span class="kw-2">&amp;</span>key.as_str()),
+                | ShaderDefVal::UInt(key, <span class="kw">_</span>) =&gt; <span class="self">Self</span>::constants().contains(<span class="kw-2">&amp;</span>key.as_str()),
             })
             .cloned()
             .collect()
@@ -189,7 +210,7 @@
 
     <span class="doccomment">/// Build an entry point name from the provided shader defs
     </span><span class="kw">fn </span>build(shader_defs: <span class="kw-2">&amp;</span>Vec&lt;ShaderDefVal&gt;) -&gt; String {
-        <span class="kw">let </span>constants = <span class="self">Self</span>::constants(shader_defs)
+        <span class="kw">let </span>constants = <span class="self">Self</span>::filter_constants(shader_defs)
             .into_iter()
             .map(|def| {
                 (
@@ -219,14 +240,35 @@
                     .map(|(key, value)| key + <span class="string">&quot;_&quot; </span>+ <span class="kw-2">&amp;</span>value)
                     .map(|variant| <span class="string">&quot;__&quot;</span>.to_string() + <span class="kw-2">&amp;</span>variant),
             )
+            .chain(
+                <span class="self">Self</span>::types()
+                    .into_iter()
+                    .map(|(key, value)| {
+                        key.to_string().to_lowercase()
+                            + <span class="string">&quot;_&quot;
+                            </span>+ <span class="kw-2">&amp;</span>value
+                                .to_string()
+                                .replace(<span class="string">&quot; &quot;</span>, <span class="string">&quot;&quot;</span>)
+                                .replace(<span class="string">&quot;\n&quot;</span>, <span class="string">&quot;&quot;</span>)
+                                .replace(<span class="string">&quot;&lt;&quot;</span>, <span class="string">&quot;_&quot;</span>)
+                                .replace(<span class="string">&quot;&gt;&quot;</span>, <span class="string">&quot;_&quot;</span>)
+                                .replace(<span class="string">&quot;[&quot;</span>, <span class="string">&quot;_&quot;</span>)
+                                .replace(<span class="string">&quot;]&quot;</span>, <span class="string">&quot;_&quot;</span>)
+                                .replace(<span class="string">&quot;(&quot;</span>, <span class="string">&quot;_&quot;</span>)
+                                .replace(<span class="string">&quot;)&quot;</span>, <span class="string">&quot;_&quot;</span>)
+                                .replace(<span class="string">&quot;::&quot;</span>, <span class="string">&quot;_&quot;</span>)
+                                .replace(<span class="string">&quot;,&quot;</span>, <span class="string">&quot;_&quot;</span>)
+                                .trim_end_matches(<span class="string">&quot;_&quot;</span>)
+                                .to_lowercase()
+                    })
+                    .map(|variant| <span class="string">&quot;__&quot;</span>.to_string() + <span class="kw-2">&amp;</span>variant),
+            )
             .collect::&lt;String&gt;()
     }
 }
 
 <span class="kw">impl </span>EntryPoint <span class="kw">for </span>() {
     <span class="kw">const </span>NAME: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">&quot;&quot;</span>;
-    <span class="kw">const </span>PARAMETERS: EntryPointParameters = <span class="kw-2">&amp;</span>[];
-    <span class="kw">const </span>CONSTANTS: EntryPointConstants = <span class="kw-2">&amp;</span>[];
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="bevy_rust_gpu" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0 (2c8cc3432 2023-03-06)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="bevy_rust_gpu" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.2 (9eb3afe9e 2023-03-27)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>

@@ -184,11 +184,37 @@
 <a href="#184" id="184">184</a>
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Adds support for exporting the active entry point set to a `.json` file.
 //!
 //! This can be used in conjunction with `rust-gpu-builder` and `permutate-macro` to drive hot-recompiles.
 
 </span><span class="kw">use </span>std::{
+    collections::BTreeMap,
     fs::File,
     path::PathBuf,
     sync::mpsc::{Receiver, SyncSender},
@@ -212,17 +238,36 @@
     std::sync::RwLock&lt;HashMap&lt;std::any::TypeId, PathBuf&gt;&gt;,
 &gt; = once_cell::sync::Lazy::new(default);
 
-<span class="doccomment">/// Handles exporting known `RustGpuMaterial` permutations to a JSON file for static compilation.
-</span><span class="kw">pub struct </span>EntryPointExportPlugin;
+<span class="doccomment">/// Export writer function wrapping `std::fs::File` and `serde_json::to_writer_pretty`
+</span><span class="kw">pub fn </span>file_writer(path: PathBuf, entry_points: EntryPoints) {
+    <span class="kw">let </span>writer = File::create(path).unwrap();
+    serde_json::to_writer_pretty(writer, <span class="kw-2">&amp;</span>entry_points).unwrap();
+}
 
-<span class="kw">impl </span>Plugin <span class="kw">for </span>EntryPointExportPlugin {
+<span class="doccomment">/// Handles exporting known `RustGpuMaterial` permutations to a JSON file for static compilation.
+</span><span class="kw">pub struct </span>EntryPointExportPlugin&lt;F&gt; {
+    <span class="kw">pub </span>writer: F,
+}
+
+<span class="kw">impl </span>Default <span class="kw">for </span>EntryPointExportPlugin&lt;<span class="kw">fn</span>(PathBuf, EntryPoints)&gt; {
+    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+        EntryPointExportPlugin {
+            writer: file_writer,
+        }
+    }
+}
+
+<span class="kw">impl</span>&lt;F&gt; Plugin <span class="kw">for </span>EntryPointExportPlugin&lt;F&gt;
+<span class="kw">where
+    </span>F: Fn(PathBuf, EntryPoints) + Clone + Send + Sync + <span class="lifetime">&#39;static</span>,
+{
     <span class="kw">fn </span>build(<span class="kw-2">&amp;</span><span class="self">self</span>, app: <span class="kw-2">&amp;mut </span>bevy::prelude::App) {
         app.world.init_non_send_resource::&lt;EntryPointExport&gt;();
 
         app.add_systems((
             EntryPointExport::create_export_containers_system.in_base_set(CoreSet::Update),
             EntryPointExport::receive_entry_points_system.in_base_set(CoreSet::Last),
-            EntryPointExport::export_entry_points_system
+            EntryPointExport::export_entry_points_system(<span class="self">self</span>.writer.clone())
                 .in_base_set(CoreSet::Last)
                 .after(EntryPointExport::receive_entry_points_system),
         ));
@@ -241,6 +286,7 @@
     <span class="kw">pub </span>shader: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str,
     <span class="kw">pub </span>permutation: Vec&lt;String&gt;,
     <span class="kw">pub </span>constants: Vec&lt;ShaderDefVal&gt;,
+    <span class="kw">pub </span>types: BTreeMap&lt;String, String&gt;,
 }
 
 <span class="attr">#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -273,16 +319,17 @@
 }
 
 <span class="attr">#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
-</span><span class="kw">struct </span>Permutation {
+</span><span class="kw">pub struct </span>Permutation {
     parameters: Vec&lt;String&gt;,
     constants: PermutationConstants,
+    types: BTreeMap&lt;String, String&gt;,
 }
 
 <span class="doccomment">/// Serializable container for a single entry point
 </span><span class="attr">#[derive(Debug, Default, Clone, Deref, DerefMut, Serialize, Deserialize)]
-</span><span class="kw">struct </span>EntryPoints {
+</span><span class="kw">pub struct </span>EntryPoints {
     <span class="attr">#[serde(flatten)]
-    </span>entry_points: HashMap&lt;String, Vec&lt;Permutation&gt;&gt;,
+    </span><span class="kw">pub </span>entry_points: HashMap&lt;String, Vec&lt;Permutation&gt;&gt;,
 }
 
 <span class="doccomment">/// Container for a set of entry points, with MPSC handles and change tracking
@@ -336,6 +383,7 @@
                 <span class="kw">let </span>permutation = Permutation {
                     parameters: entry_point.permutation,
                     constants: entry_point.constants.into(),
+                    types: entry_point.types,
                 };
 
                 <span class="kw">if </span>!entry.contains(<span class="kw-2">&amp;</span>permutation) {
@@ -352,23 +400,25 @@
     }
 
     <span class="doccomment">/// System used to write active entry point sets to their respective files on change via the IO task pool.
-    </span><span class="kw">pub fn </span>export_entry_points_system(<span class="kw-2">mut </span>exports: NonSendMut&lt;<span class="self">Self</span>&gt;) {
-        <span class="kw">for </span>(path, export) <span class="kw">in </span>exports.exports.iter_mut() {
-            <span class="kw">if </span>export.changed {
-                <span class="kw">let </span>entry_points = export.entry_points.clone();
-                <span class="kw">let </span>path = path.clone();
-                <span class="kw">let </span>io_pool = IoTaskPool::get();
-                io_pool
-                    .spawn(<span class="kw">async move </span>{
-                        <span class="macro">info!</span>(<span class="string">&quot;Exporting entry points to {:}&quot;</span>, path.to_str().unwrap());
-                        <span class="kw">let </span>writer = File::create(path).unwrap();
-                        serde_json::to_writer_pretty(writer, <span class="kw-2">&amp;</span>entry_points).unwrap();
-                    })
-                    .detach();
-                export.changed = <span class="bool-val">false</span>;
+    </span><span class="kw">pub fn </span>export_entry_points_system&lt;F&gt;(f: F) -&gt; <span class="kw">impl </span>Fn(NonSendMut&lt;<span class="self">Self</span>&gt;) + Send + Sync + <span class="lifetime">&#39;static
+    </span><span class="kw">where
+        </span>F: Fn(PathBuf, EntryPoints) + Clone + Send + Sync + <span class="lifetime">&#39;static</span>,
+    {
+        <span class="kw">move </span>|<span class="kw-2">mut </span>exports: NonSendMut&lt;<span class="self">Self</span>&gt;| {
+            <span class="kw">for </span>(path, export) <span class="kw">in </span>exports.exports.iter_mut() {
+                <span class="kw">if </span>export.changed {
+                    <span class="kw">let </span>entry_points = export.entry_points.clone();
+                    <span class="kw">let </span>path = path.clone();
+                    <span class="kw">let </span>f = f.clone();
+                    <span class="macro">info!</span>(<span class="string">&quot;Exporting entry points to {:}&quot;</span>, path.to_str().unwrap());
+                    IoTaskPool::get()
+                        .spawn(<span class="kw">async move </span>{ f(path, entry_points) })
+                        .detach();
+                    export.changed = <span class="bool-val">false</span>;
+                }
             }
         }
     }
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="bevy_rust_gpu" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0 (2c8cc3432 2023-03-06)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="bevy_rust_gpu" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.2 (9eb3afe9e 2023-03-27)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>

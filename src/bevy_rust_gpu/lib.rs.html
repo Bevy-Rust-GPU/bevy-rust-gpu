@@ -28,10 +28,6 @@
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
 <a href="#30" id="30">30</a>
-<a href="#31" id="31">31</a>
-<a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
-<a href="#34" id="34">34</a>
 </pre><pre class="rust"><code><span class="doccomment">//! # bevy-rust-gpu
 //!
 //! A set of `bevy` plugins supporting the use of `rust-gpu` shaders.
@@ -42,29 +38,25 @@
 //! Can be used in conjunction with `rust-gpu-builder` and `permutate-macro`
 //! to drive a real-time shader recompilation pipeline.
 
-</span><span class="kw">mod </span>entry_point;
-<span class="kw">mod </span>load_rust_gpu_shader;
+</span><span class="kw">mod </span>builder_output;
+<span class="kw">mod </span>entry_point;
 <span class="kw">mod </span>plugin;
 <span class="kw">mod </span>rust_gpu;
 <span class="kw">mod </span>rust_gpu_material;
 
-<span class="kw">pub mod </span>systems;
-
 <span class="kw">pub use </span>entry_point::<span class="kw-2">*</span>;
-<span class="kw">pub use </span>load_rust_gpu_shader::LoadRustGpuShader;
 <span class="kw">pub use </span>plugin::RustGpuPlugin;
 <span class="kw">pub use </span>rust_gpu::<span class="kw-2">*</span>;
 <span class="kw">pub use </span>rust_gpu_material::RustGpuMaterial;
 
-<span class="attr">#[cfg(feature = <span class="string">&quot;bevy-pbr-rust&quot;</span>)]
-</span><span class="kw">pub mod </span>bevy_pbr_rust;
-
-<span class="attr">#[cfg(feature = <span class="string">&quot;hot-reload&quot;</span>)]
-</span><span class="kw">pub mod </span>shader_meta;
+<span class="kw">pub use </span>rust_gpu_builder_shared::{RustGpuBuilderModules, RustGpuBuilderOutput};
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;hot-rebuild&quot;</span>)]
 </span><span class="kw">pub mod </span>entry_point_export;
 
+<span class="attr">#[cfg(feature = <span class="string">&quot;bevy-pbr-rust&quot;</span>)]
+</span><span class="kw">pub mod </span>bevy_pbr_rust;
+
 <span class="kw">pub mod </span>prelude;
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="bevy_rust_gpu" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0 (2c8cc3432 2023-03-06)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="bevy_rust_gpu" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.2 (9eb3afe9e 2023-03-27)" data-search-js="search-98d53477a794af0b.js" data-settings-js="settings-c3c521c753752a1a.js" data-settings-css="settings-08ddfdda51b8ee2e.css" ></div></body></html>
