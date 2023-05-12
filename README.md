@@ -17,16 +17,13 @@ Features include hot-reloading with metadata-based entrypoint validation, and ho
 
 `bevy-rust-gpu` relies on [`rust-gpu`](https://github.com/EmbarkStudios/rust-gpu), which is in active development.
 
-As such, its use implies all the caveats of the above, plus the following:
-
-* [Using SPIR-V in a bevy `Material` requires a custom fork](https://github.com/Bevy-Rust-GPU/bevy-rust-gpu/issues/12)
-* [Storage buffers are currently unsupported](https://github.com/Bevy-Rust-GPU/bevy-rust-gpu/issues/13)
+As such, its use implies all the caveats of the above, plus the use of [a custom `bevy` fork](https://github.com/Bevy-Rust-GPU/bevy-rust-gpu/issues/12).
 
 Beyond that, `bevy-rust-gpu` is also in active development, but has a relatively small user-facing API footprint.
 Major changes will be driven by development in the upstream `bevy` and `rust-gpu` crates.
 
 In practical terms, its current state is able to support the hot-rebuild workflow depicted above,
-and allows for relatively complex shader implementations (storage buffer issues notwithstanding), such as [a Rust reimplementation of `bevy_pbr`](https://github.com/Bevy-Rust-GPU/bevy-pbr-rust).
+and allows for relatively complex shader implementations, such as [a Rust reimplementation of `bevy_pbr`](https://github.com/Bevy-Rust-GPU/bevy-pbr-rust).
 
 Currently, none of the [Bevy Rust-GPU](https://github.com/Bevy-Rust-GPU) crates are published on crates.io;
 this may change as and when the major caveats are solved, but in the meantime will be hosted on github and versioned by tag.
