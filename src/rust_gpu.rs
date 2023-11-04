@@ -6,10 +6,10 @@ use bevy::{
     asset::Asset,
     pbr::MaterialPipelineKey,
     prelude::{
-        default, info, warn, AssetEvent, Assets, CoreSet, EventReader, Handle, Image,
-        IntoSystemConfig, Material, MaterialPlugin, Plugin, ResMut,
+        default, info, warn, AssetEvent, Assets,  EventReader, Handle, Image,
+         Material, MaterialPlugin, Plugin, ResMut, PreUpdate,
     },
-    reflect::TypeUuid,
+    reflect::{TypeUuid, Reflect},
     render::render_resource::{
         AsBindGroup, PreparedBindGroup, ShaderRef, SpecializedMeshPipelineError,
     },
@@ -44,12 +44,12 @@ where
 
 impl<M> Plugin for RustGpuMaterialPlugin<M>
 where
-    M: Material + RustGpuMaterial,
+    M: Material + RustGpuMaterial  + bevy::prelude::FromReflect,
     M::Data: Clone + Eq + std::hash::Hash,
 {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_plugin(MaterialPlugin::<RustGpu<M>>::default());
-        app.add_system(reload_materials::<M>.in_base_set(CoreSet::PreUpdate));
+        app.add_plugins(MaterialPlugin::<RustGpu<M>>::default());
+        app.add_systems(PreUpdate, reload_materials::<M>);
     }
 }
 
@@ -63,7 +63,7 @@ where
 
 impl<M> Default for RustGpuMaterial2dPlugin<M>
 where
-    M: Material2d + RustGpuMaterial,
+    M: Material2d + RustGpuMaterial  + bevy::prelude::FromReflect,
 {
     fn default() -> Self {
         RustGpuMaterial2dPlugin {
@@ -74,12 +74,12 @@ where
 
 impl<M> Plugin for RustGpuMaterial2dPlugin<M>
 where
-    M: Material2d + RustGpuMaterial,
+    M: Material2d + RustGpuMaterial  + bevy::prelude::FromReflect,
     M::Data: Clone + Eq + std::hash::Hash,
 {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_plugin(Material2dPlugin::<RustGpu<M>>::default());
-        app.add_system(reload_materials::<M>.in_base_set(CoreSet::PreUpdate));
+        app.add_plugins(Material2dPlugin::<RustGpu<M>>::default());
+        app.add_systems(PreUpdate, reload_materials::<M>);
     }
 }
 
@@ -152,7 +152,7 @@ where
 }
 
 /// Extends a `Material` with `rust-gpu` shader support.
-#[derive(Debug, Default, Clone, TypeUuid)]
+#[derive(Debug, Default, Clone, TypeUuid, Reflect)]
 #[uuid = "6d355e05-c567-4a29-a84a-362df79111de"]
 pub struct RustGpu<M> {
     /// Base material.
@@ -431,7 +431,7 @@ where
 
 impl<M> Material for RustGpu<M>
 where
-    M: Material + RustGpuMaterial,
+    M: Material + RustGpuMaterial + bevy::prelude::FromReflect,
     M::Data: Clone,
 {
     fn vertex_shader() -> bevy::render::render_resource::ShaderRef {
@@ -497,7 +497,7 @@ where
 
 impl<M> Material2d for RustGpu<M>
 where
-    M: Material2d + RustGpuMaterial,
+    M: Material2d + RustGpuMaterial  + bevy::prelude::FromReflect,
     M::Data: Clone,
 {
     fn vertex_shader() -> bevy::render::render_resource::ShaderRef {
@@ -569,7 +569,7 @@ pub fn reload_materials<M>(
     mut builder_output_events: EventReader<AssetEvent<RustGpuBuilderOutput>>,
     mut materials: ResMut<Assets<RustGpu<M>>>,
 ) where
-    M: Asset + RustGpuMaterial,
+    M: Asset + RustGpuMaterial  + bevy::prelude::FromReflect,
 {
     for event in builder_output_events.iter() {
         if let AssetEvent::Created { handle } | AssetEvent::Modified { handle } = event {

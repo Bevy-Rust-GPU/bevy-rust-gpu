@@ -1,8 +1,8 @@
 use std::{collections::BTreeMap, sync::RwLock};
 
 use bevy::prelude::{
-    default, AssetEvent, Assets, CoreSet, Deref, DerefMut, EventReader, Handle, IntoSystemConfig,
-    Plugin, Res, ResMut, Shader,
+    default, AssetEvent, Assets,  Deref, DerefMut, EventReader, Handle, 
+    Plugin, Res, ResMut, Shader, PreUpdate,
 };
 use once_cell::sync::Lazy;
 use rust_gpu_builder_shared::RustGpuBuilderOutput;
@@ -20,11 +20,11 @@ impl Plugin for BuilderOutputPlugin {
         >::new(&["rust-gpu.json"]));
 
         #[cfg(feature = "msgpack")]
-        app.add_plugin(bevy_common_assets::msgpack::MsgPackAssetPlugin::<
+        app.add_plugins(bevy_common_assets::msgpack::MsgPackAssetPlugin::<
             RustGpuBuilderOutput,
         >::new(&["rust-gpu.msgpack"]));
 
-        app.add_system(builder_output_events.in_base_set(CoreSet::PreUpdate));
+        app.add_systems(PreUpdate, builder_output_events);
     }
 }
 
@@ -64,7 +64,7 @@ pub fn builder_output_events(
             // Create a `RustGpuArtifact` from the affected asset
             let artifact = match asset.modules {
                 rust_gpu_builder_shared::RustGpuBuilderModules::Single(ref single) => {
-                    let shader = shaders.add(Shader::from_spirv(single.clone()));
+                    let shader = shaders.add(Shader::from_spirv(single.clone(), ""));
                     RustGpuArtifact {
                         entry_points: asset.entry_points,
                         modules: RustGpuModules::Single(shader),
@@ -75,7 +75,7 @@ pub fn builder_output_events(
                     modules: RustGpuModules::Multi(
                         multi
                             .into_iter()
-                            .map(|(k, module)| (k.clone(), shaders.add(Shader::from_spirv(module))))
+                            .map(|(k, module)| (k.clone(), shaders.add(Shader::from_spirv(module, ""))))
                             .collect(),
                     ),
                 },
@@ -90,7 +90,7 @@ pub fn builder_output_events(
 
         // On remove, remove the corresponding artifact from static storage
         if let AssetEvent::Removed { handle } = event {
-            RUST_GPU_ARTIFACTS.write().unwrap().remove(handle);
+            RUST_GPU_ARTIFACTS.write().unwrap().remove(&handle);
         }
     }
 }

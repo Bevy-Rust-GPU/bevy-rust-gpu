@@ -10,7 +10,7 @@ use std::{
 };
 
 use bevy::{
-    prelude::{default, info, CoreSet, Deref, DerefMut, IntoSystemConfig, NonSendMut, Plugin},
+    prelude::{default, info, Deref, DerefMut, NonSendMut, Plugin, Update, Last, IntoSystemConfigs},
     render::render_resource::ShaderDefVal,
     tasks::IoTaskPool,
     utils::HashMap,
@@ -53,11 +53,11 @@ where
     fn build(&self, app: &mut bevy::prelude::App) {
         app.world.init_non_send_resource::<EntryPointExport>();
 
-        app.add_systems((
-            EntryPointExport::create_export_containers_system.in_base_set(CoreSet::Update),
-            EntryPointExport::receive_entry_points_system.in_base_set(CoreSet::Last),
+        app.add_systems(Update, (
+            EntryPointExport::create_export_containers_system,
+        )).add_systems(Last, (
+            EntryPointExport::receive_entry_points_system,
             EntryPointExport::export_entry_points_system(self.writer.clone())
-                .in_base_set(CoreSet::Last)
                 .after(EntryPointExport::receive_entry_points_system),
         ));
     }
