@@ -36,10 +36,10 @@ where
     F: Fn(PathBuf, EntryPoints) + Clone + Send + Sync + 'static,
 {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_plugin(BuilderOutputPlugin);
+        app.add_plugins(BuilderOutputPlugin);
 
         #[cfg(feature = "hot-rebuild")]
-        app.add_plugin(crate::prelude::EntryPointExportPlugin {
+        app.add_plugins(crate::prelude::EntryPointExportPlugin {
             writer: self.export_writer.clone(),
         });
     }

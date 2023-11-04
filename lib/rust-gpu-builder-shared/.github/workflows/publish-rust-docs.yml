@@ -1,0 +1,11 @@
+name: Publish Rust Docs
+run-name: ${{ github.actor }} is publishing documentation 🚀
+on:
+  push:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-cargo-doc:
+    uses: Shfty/github-actions/.github/workflows/publish-rust-docs.yml@master

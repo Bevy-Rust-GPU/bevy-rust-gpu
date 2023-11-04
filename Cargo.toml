@@ -11,9 +11,9 @@ json = ["bevy_common_assets/json"]
 msgpack = ["bevy_common_assets/msgpack"]
 
 [dependencies]
-bevy = "0.10.0"
+bevy = "0.11.*"
 serde = "1.0.152"
 serde_json = "1.0.93"
-bevy_common_assets = "0.6.0"
+bevy_common_assets = "0.7.0"
 once_cell = "1.17.1"
-rust-gpu-builder-shared = { git = "https://github.com/bevy-rust-gpu/rust-gpu-builder-shared", tag = "v0.2.0", features = ["bevy"] }
+rust-gpu-builder-shared = { path = "./lib/rust-gpu-builder-shared", features = ["bevy"] }
